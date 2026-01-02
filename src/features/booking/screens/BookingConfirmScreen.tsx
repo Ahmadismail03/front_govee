@@ -16,6 +16,7 @@ import { TextField } from '../../../shared/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, borderRadius, iconSizes, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { formatTimeLabel } from '../../../shared/utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingConfirm'>;
 
@@ -26,6 +27,9 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
   const isLoading = useAppointmentsStore((s) => s.isLoading);
   const pref = useReminderPreferencesStore((s) => s.pref);
   const loadPref = useReminderPreferencesStore((s) => s.load);
+  const setLeadTimeHours = useReminderPreferencesStore((s) => s.setLeadTimeHours);
+  const setChannel = useReminderPreferencesStore((s) => s.setChannel);
+  const setEmail = useReminderPreferencesStore((s) => s.setEmail);
   const [service, setService] = useState<Service | null>(null);
   const [slot, setSlot] = useState<TimeSlot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,6 +102,15 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
     }
 
     try {
+      // Persist reminder preference as the user's default (DB-backed).
+      if (reminderChannel === 'none') {
+        await setChannel('none');
+      } else {
+        await setLeadTimeHours(reminderLeadTimeHours as any);
+        await setChannel(reminderChannel);
+        if (needsEmail) await setEmail(reminderEmail.trim());
+      }
+
       const appt = await create({
         serviceId: route.params.serviceId,
         date: route.params.date,
@@ -166,7 +179,7 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
           <Ionicons name="time-outline" size={iconSizes.sm} color={theme.textSecondary} />
           <Text style={[styles.key, { color: theme.textSecondary }]}>{t('booking.timeLabel')}</Text>
           <Text style={[styles.value, { color: theme.text }]}>
-            {slot.startTime} - {slot.endTime}
+            {formatTimeLabel(slot.startTime)}
           </Text>
         </View>
 

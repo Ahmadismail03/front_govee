@@ -11,6 +11,7 @@ import { useAppointmentsStore } from '../store/useAppointmentsStore';
 import type { TimeSlot } from '../../../core/domain/timeSlot';
 import { Button } from '../../../shared/ui/Button';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { formatTimeLabel } from '../../../shared/utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AppointmentRescheduleConfirm'>;
 
@@ -67,7 +68,7 @@ export function AppointmentRescheduleConfirmScreen({ navigation, route }: Props)
       <Text style={[styles.title, { color: colors.text }]}>{t('appointments.rescheduleConfirmTitle')}</Text>
       <View style={[styles.box, { borderColor: colors.border, backgroundColor: colors.surface }]}>
         <Text style={[styles.meta, { color: colors.text }]}>{appt.serviceName}</Text>
-        <Text style={[styles.meta, { color: colors.textSecondary }]}>{route.params.date} {slot.startTime}-{slot.endTime}</Text>
+        <Text style={[styles.meta, { color: colors.textSecondary }]}>{route.params.date} {formatTimeLabel(slot.startTime)}</Text>
       </View>
       <Button
         title={t('appointments.reschedule')}

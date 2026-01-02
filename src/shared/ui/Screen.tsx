@@ -1,6 +1,7 @@
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { spacing } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
 
@@ -12,6 +13,12 @@ type Props = {
 
 export function Screen({ children, scroll, keyboardAvoiding }: Props) {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? Math.max(headerHeight, insets.top) : 0;
+  const bottomPad = insets.bottom + spacing.xxxl;
+
   const styles = React.useMemo(
     () =>
       StyleSheet.create({
@@ -46,8 +53,17 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
     [colors]
   );
 
-  const content = scroll ? (
-    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+  const shouldScroll = Boolean(scroll || keyboardAvoiding);
+
+  const content = shouldScroll ? (
+    <ScrollView
+      contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: bottomPad }]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
+      automaticallyAdjustKeyboardInsets
+      contentInsetAdjustmentBehavior={Platform.OS === 'ios' ? 'automatic' : undefined}
+    >
       {children}
     </ScrollView>
   ) : (
@@ -76,7 +92,8 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
       />
       <KeyboardAvoidingView
         style={styles.root}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardVerticalOffset}
       >
         {content}
       </KeyboardAvoidingView>

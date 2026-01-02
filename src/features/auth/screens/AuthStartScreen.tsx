@@ -92,11 +92,12 @@ export function AuthStartScreen({ navigation, route }: Props) {
       StyleSheet.create({
         container: {
           flex: 1,
-          justifyContent: 'center',
+          justifyContent: 'flex-start',
         },
         logoContainer: {
           alignItems: 'center',
           marginBottom: spacing.xxxl,
+          paddingTop: spacing.xl,
         },
         logo: {
           width: 200,

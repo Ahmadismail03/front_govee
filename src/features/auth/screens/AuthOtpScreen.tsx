@@ -114,11 +114,12 @@ export function AuthOtpScreen({ navigation, route }: Props) {
       StyleSheet.create({
         container: {
           flex: 1,
-          justifyContent: 'center',
+          justifyContent: 'flex-start',
         },
         logoContainer: {
           alignItems: 'center',
           marginBottom: spacing.xxl,
+          paddingTop: spacing.xl,
         },
         logo: {
           width: 200,

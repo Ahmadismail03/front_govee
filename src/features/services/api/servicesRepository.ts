@@ -7,6 +7,8 @@ type BackendServiceListItem = {
   canonicalName: string;
   description?: string | null;
   isActive: boolean;
+  // NOTE: Some backend versions may include this on the list response.
+  price?: string | number | null;
 };
 
 type BackendServiceDocument = {
@@ -35,7 +37,6 @@ function mapBackendServiceToDomain(svc: BackendServiceDetails): Service {
     description: svc.description ?? '',
     requiredDocuments,
     fees: Number.isFinite(fees) ? fees : 0,
-    estimatedProcessingTimeMinutes: 30,
     steps: [],
     isEnabled: Boolean(svc.isActive),
   };
@@ -43,7 +44,29 @@ function mapBackendServiceToDomain(svc: BackendServiceDetails): Service {
 
 export async function getServices(): Promise<Service[]> {
   const res = await getApiClient().get<{ services: BackendServiceListItem[] }>('/services');
-  return (res.data.services ?? []).map((s) => mapBackendServiceToDomain(s));
+  const list = res.data.services ?? [];
+  const mapped = list.map((s) => mapBackendServiceToDomain(s));
+
+  // If the list response doesn't include `price`, hydrate fees via service details.
+  const listHasAnyPrice = list.some((s) => s.price != null);
+  if (listHasAnyPrice) return mapped;
+
+  const enriched = await Promise.all(
+    mapped.map(async (svc) => {
+      try {
+        const details = await getServiceById(svc.id);
+        return {
+          ...svc,
+          fees: details.fees,
+          requiredDocuments: details.requiredDocuments,
+        };
+      } catch {
+        return svc;
+      }
+    })
+  );
+
+  return enriched;
 }
 
 export async function getServiceById(serviceId: string): Promise<Service> {

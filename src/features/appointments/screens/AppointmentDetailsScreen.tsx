@@ -12,6 +12,8 @@ import { spacing, typography, borderRadius, iconSizes, shadows } from '../../../
 import { useThemeColors, type ThemeColors } from '../../../shared/theme/useTheme';
 import { useServicesStore } from '../../services/store/useServicesStore';
 import { getServiceImageSource } from '../../services/utils/serviceImages';
+import { useReminderPreferencesStore } from '../../preferences/store/useReminderPreferencesStore';
+import { formatTimeLabel } from '../../../shared/utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AppointmentDetails'>;
 
@@ -22,10 +24,17 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
   const appt = useAppointmentsStore((s) => s.appointments.find((a) => a.id === route.params.appointmentId) ?? null);
   const services = useServicesStore((s) => s.services);
   const svc = services.find((s) => s.id === appt?.serviceId);
+  const pref = useReminderPreferencesStore((s) => s.pref);
+  const loadPref = useReminderPreferencesStore((s) => s.load);
 
   useEffect(() => {
     navigation.setOptions({ title: t('appointments.details') });
   }, [navigation, t]);
+
+  useEffect(() => {
+    loadPref();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!appt) return <EmptyView />;
 
@@ -48,12 +57,10 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
   }, [appt.status, t]);
 
   const reminderSummary = useMemo(() => {
-    const channel = appt.reminderChannel ?? 'none';
+    const channel = pref.enabled ? pref.channel : 'none';
     if (channel === 'none') return t('preferences.disabled');
 
-    const base = typeof appt.reminderLeadTimeHours === 'number'
-      ? t('preferences.reminderSummary', { hours: appt.reminderLeadTimeHours })
-      : t('preferences.enabled');
+    const base = t('preferences.reminderSummary', { hours: pref.leadTimeHours });
 
     const channelLabel =
       channel === 'sms'
@@ -63,7 +70,7 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
           : t('preferences.reminderChannelBoth');
 
     return `${base} • ${channelLabel}`;
-  }, [appt.reminderChannel, appt.reminderLeadTimeHours, t]);
+  }, [pref.channel, pref.enabled, pref.leadTimeHours, t]);
 
   return (
     <Screen scroll>
@@ -99,7 +106,7 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
           <Ionicons name="time-outline" size={iconSizes.sm} color={colors.textSecondary} />
           <Text style={styles.key}>{t('booking.timeLabel')}</Text>
           <Text style={styles.value}>
-            {appt.startTime}-{appt.endTime}
+            {formatTimeLabel(appt.startTime)}
           </Text>
         </View>
         <View style={styles.row}>

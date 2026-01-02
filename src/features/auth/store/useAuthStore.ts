@@ -8,6 +8,7 @@ import {
 import type { User } from '../../../core/domain/user';
 import * as authRepo from '../api/authRepository';
 import { setSessionToken } from '../../../core/auth/session';
+import { useProfileStore } from '../../profile/store/useProfileStore';
 
 export type AuthStatus = 'hydrating' | 'anonymous' | 'authenticated';
 
@@ -112,6 +113,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         hasBootstrapped: true,
         isLoading: false,
       });
+
+      // Keep profile name in sync with backend user.
+      const name = (res.user as any)?.fullName;
+      if (typeof name === 'string' && name.trim()) {
+        await useProfileStore.getState().setFullName(name.trim());
+      }
+
       return res;
     } catch (e: any) {
       set({ isLoading: false, error: e?.message ?? 'Verification failed' });

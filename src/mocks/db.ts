@@ -48,7 +48,6 @@ const services: Service[] = [
       'mock.services.svc_renew_id.documents.proofOfAddress',
     ],
     fees: 25,
-    estimatedProcessingTimeMinutes: 30,
     steps: [
       {
         id: 'st_1',
@@ -72,7 +71,6 @@ const services: Service[] = [
       'mock.services.svc_passport_renew.documents.nationalId',
     ],
     fees: 60,
-    estimatedProcessingTimeMinutes: 40,
     steps: [
       { id: 'st_1', title: 'mock.services.svc_passport_renew.steps.submit.title' },
       { id: 'st_2', title: 'mock.services.svc_passport_renew.steps.verify.title' },
@@ -91,7 +89,6 @@ const services: Service[] = [
       'mock.services.svc_birth_cert.documents.familyBook',
     ],
     fees: 10,
-    estimatedProcessingTimeMinutes: 15,
     steps: [
       { id: 'st_1', title: 'mock.services.svc_birth_cert.steps.request.title' },
       { id: 'st_2', title: 'mock.services.svc_birth_cert.steps.receive.title' },
@@ -109,7 +106,6 @@ const services: Service[] = [
       'mock.services.svc_vehicle_reg.documents.insurance',
     ],
     fees: 50,
-    estimatedProcessingTimeMinutes: 45,
     steps: [
       { id: 'st_1', title: 'mock.services.svc_vehicle_reg.steps.vehicleInfo.title' },
       { id: 'st_2', title: 'mock.services.svc_vehicle_reg.steps.payFees.title' },
@@ -128,7 +124,6 @@ const services: Service[] = [
       'mock.services.svc_driver_license_renew.documents.medical',
     ],
     fees: 35,
-    estimatedProcessingTimeMinutes: 25,
     steps: [
       { id: 'st_1', title: 'mock.services.svc_driver_license_renew.steps.submit.title' },
       { id: 'st_2', title: 'mock.services.svc_driver_license_renew.steps.pay.title' },
@@ -148,7 +143,6 @@ const services: Service[] = [
       'mock.services.svc_parking_permit.documents.proofOfResidence',
     ],
     fees: 15,
-    estimatedProcessingTimeMinutes: 20,
     steps: [
       { id: 'st_1', title: 'mock.services.svc_parking_permit.steps.apply.title' },
       { id: 'st_2', title: 'mock.services.svc_parking_permit.steps.review.title' },
@@ -164,7 +158,6 @@ const services: Service[] = [
     imageKey: 'promo_digital',
     requiredDocuments: [],
     fees: 0,
-    estimatedProcessingTimeMinutes: 10,
     steps: [],
     isEnabled: false,
   },

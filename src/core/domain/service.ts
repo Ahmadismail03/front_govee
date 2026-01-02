@@ -13,7 +13,6 @@ export type Service = {
   imageKey?: 'promo_digital' | 'promo_citizen' | 'promo_services';
   requiredDocuments: string[];
   fees: number;
-  estimatedProcessingTimeMinutes: number;
   steps: ServiceStep[];
   isEnabled: boolean;
 };

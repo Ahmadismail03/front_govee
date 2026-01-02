@@ -85,13 +85,6 @@ export function ServiceDetailsScreen({ navigation, route }: Props) {
           <Text style={styles.detailLabel}>{t('services.fees')}</Text>
           <Text style={styles.detailValue}>{formatFees(service.fees)}</Text>
         </View>
-
-        <View style={styles.detailCard}>
-          <Text style={styles.detailLabel}>{t('services.estimatedTime')}</Text>
-          <Text style={styles.detailValue}>
-            {t('services.minutes', { count: service.estimatedProcessingTimeMinutes })}
-          </Text>
-        </View>
       </View>
 
       {/* Required Documents */}

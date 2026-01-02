@@ -25,6 +25,7 @@ export function ProfileScreen({ navigation }: Props) {
   const profileLoading = useProfileStore((s) => s.isLoading);
   const profileError = useProfileStore((s) => s.error);
   const fullName = useProfileStore((s) => s.fullName);
+  const setFullName = useProfileStore((s) => s.setFullName);
   const photoUri = useProfileStore((s) => s.photoUri);
   const clearProfile = useProfileStore((s) => s.clear);
 
@@ -36,6 +37,13 @@ export function ProfileScreen({ navigation }: Props) {
     profileBoot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const fromAuth = (user as any)?.fullName;
+    if (!profileLoading && !(fullName || '').trim() && typeof fromAuth === 'string' && fromAuth.trim()) {
+      setFullName(fromAuth.trim());
+    }
+  }, [fullName, profileLoading, setFullName, user]);
 
   const navigateTo = (screen: string, params?: any) => {
     const parent = typeof navigation?.getParent === 'function' ? navigation.getParent() : null;

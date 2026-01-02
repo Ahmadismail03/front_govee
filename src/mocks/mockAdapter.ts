@@ -114,7 +114,7 @@ function addDays(base: Date, days: number): Date {
 }
 
 // Temporary fallback until backend exposes real availability.
-// Generates hourly slots for the next year, all available.
+// Generates selectable start times from 08:00 to 13:30 (every 30 minutes) for the next year.
 function generateTemporarySlots(serviceId: string, days: number = 365) {
   const today = new Date();
   const slots: Array<{
@@ -126,11 +126,17 @@ function generateTemporarySlots(serviceId: string, days: number = 365) {
     isAvailable: boolean;
   }> = [];
 
+  const formatHm = (totalMinutes: number) => {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${pad2(h)}:${pad2(m)}`;
+  };
+
   for (let i = 0; i < days; i += 1) {
     const date = isoDate(addDays(today, i));
-    for (let hour = 0; hour < 24; hour += 1) {
-      const startTime = `${pad2(hour)}:00`;
-      const endTime = `${pad2((hour + 1) % 24)}:00`;
+    for (let startMin = 8 * 60; startMin <= 13 * 60 + 30; startMin += 30) {
+      const startTime = formatHm(startMin);
+      const endTime = formatHm(startMin + 30);
       slots.push({
         id: `slot_${serviceId}_${date}_${startTime}`,
         serviceId,

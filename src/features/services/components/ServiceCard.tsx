@@ -220,18 +220,6 @@ export function ServiceCard({ service, onPress }: Props) {
           <View style={styles.detailsRow}>
             <View style={styles.detailItem}>
               <View style={styles.detailIconContainer}>
-                <Ionicons name="time-outline" size={18} color={colors.primary} />
-              </View>
-              <View style={styles.detailTextContainer}>
-                <Text style={styles.detailLabel}>{t('services.processingTime')}</Text>
-                <Text style={styles.detailValue}>
-                  {t('services.minutes', { count: service.estimatedProcessingTimeMinutes })}
-                </Text>
-              </View>
-            </View>
-            
-            <View style={styles.detailItem}>
-              <View style={styles.detailIconContainer}>
                 <Ionicons name="cash-outline" size={18} color={colors.primary} />
               </View>
               <View style={styles.detailTextContainer}>

@@ -13,6 +13,7 @@ import { Button } from '../../../shared/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, borderRadius, iconSizes, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { formatTimeLabel } from '../../../shared/utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingSelectSlot'>;
 
@@ -103,52 +104,56 @@ export function BookingSelectSlotScreen({ navigation, route }: Props) {
     </View>
   );
 
-  const ListFooter = () => (
-    <View style={styles.footer}>
-      <Button title={t('common.ok')} onPress={onNext} disabled={!selectedSlotId} />
-    </View>
-  );
-
   return (
     <Screen>
-      <FlatList
-        data={daySlots}
-        keyExtractor={(i) => i.id}
-        ListHeaderComponent={ListHeader}
-        ListFooterComponent={ListFooter}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => {
-          const selected = item.id === selectedSlotId;
-          return (
-            <Pressable
-              onPress={() => setSelectedSlotId(item.id)}
-              style={[styles.slot, selected && styles.slotSelected]}
-              accessibilityRole="button"
-              accessibilityLabel={`${item.startTime}-${item.endTime}`}
-            >
-              <View style={styles.slotIcon}>
-                <Ionicons
-                  name={selected ? 'checkmark-circle' : 'time-outline'}
-                  size={iconSizes.md}
-                  color={selected ? colors.primary : colors.textTertiary}
-                />
-              </View>
-              <View style={styles.slotContent}>
-                <Text style={[styles.slotText, selected && styles.slotTextSelected]}>
-                  {item.startTime} - {item.endTime}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        }}
-      />
+      <View style={styles.container}>
+        <FlatList
+          data={daySlots}
+          keyExtractor={(i) => i.id}
+          ListHeaderComponent={ListHeader}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const selected = item.id === selectedSlotId;
+            return (
+              <Pressable
+                onPress={() => setSelectedSlotId(item.id)}
+                style={[styles.slot, selected && styles.slotSelected]}
+                accessibilityRole="button"
+                accessibilityLabel={formatTimeLabel(item.startTime)}
+              >
+                <View style={styles.slotIcon}>
+                  <Ionicons
+                    name={selected ? 'checkmark-circle' : 'time-outline'}
+                    size={iconSizes.md}
+                    color={selected ? colors.primary : colors.textTertiary}
+                  />
+                </View>
+                <View style={styles.slotContent}>
+                  <Text style={[styles.slotText, selected && styles.slotTextSelected]}>
+                    {formatTimeLabel(item.startTime)}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          }}
+        />
+
+        {selectedSlotId ? (
+          <View style={styles.bottomBar}>
+            <Button title={t('common.ok')} onPress={onNext} />
+          </View>
+        ) : null}
+      </View>
     </Screen>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
   StyleSheet.create({
+    container: {
+      flex: 1,
+    },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -178,7 +183,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
     },
     list: {
       gap: spacing.sm,
-      paddingBottom: spacing.md,
+      paddingBottom: spacing.xxxl,
     },
     slot: {
       flexDirection: 'row',
@@ -213,8 +218,8 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       color: colors.primary,
       fontWeight: typography.bold,
     },
-    footer: {
-      marginTop: spacing.lg,
+    bottomBar: {
+      paddingTop: spacing.sm,
     },
     emptyActions: {
       marginTop: spacing.xl,

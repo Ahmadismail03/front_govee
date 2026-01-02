@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -10,6 +10,8 @@ import { useThemeColors } from '../../../shared/theme/useTheme';
 import { getServiceSlots } from '../../services/api/servicesRepository';
 import { useAppointmentsStore } from '../store/useAppointmentsStore';
 import type { TimeSlot } from '../../../core/domain/timeSlot';
+import { Button } from '../../../shared/ui/Button';
+import { formatTimeLabel } from '../../../shared/utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AppointmentRescheduleSelectSlot'>;
 
@@ -61,41 +63,48 @@ export function AppointmentRescheduleSelectSlotScreen({ navigation, route }: Pro
 
   return (
     <Screen>
-      <Text style={[styles.title, { color: colors.text }]}>{route.params.date}</Text>
-      <FlatList
-        data={daySlots}
-        keyExtractor={(i) => i.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => {
-          const selected = item.id === selectedSlotId;
-          return (
-            <Pressable
-              onPress={() => setSelectedSlotId(item.id)}
-              style={[
-                styles.slot,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                selected && { borderColor: colors.primary, backgroundColor: colors.cardHover },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={`${item.startTime}-${item.endTime}`}
-            >
-              <View style={styles.slotRow}>
-                <Text style={[styles.slotText, { color: colors.text }]}>{item.startTime}</Text>
-                <Text style={[styles.slotText, { color: colors.textSecondary }]}>-</Text>
-                <Text style={[styles.slotText, { color: colors.text }]}>{item.endTime}</Text>
-              </View>
-            </Pressable>
-          );
-        }}
-      />
-      <Button title={t('common.ok')} onPress={onNext} disabled={!selectedSlotId} />
+      <View style={styles.container}>
+        <Text style={[styles.title, { color: colors.text }]}>{route.params.date}</Text>
+        <FlatList
+          data={daySlots}
+          keyExtractor={(i) => i.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const selected = item.id === selectedSlotId;
+            return (
+              <Pressable
+                onPress={() => setSelectedSlotId(item.id)}
+                style={[
+                  styles.slot,
+                  { borderColor: colors.border, backgroundColor: colors.surface },
+                  selected && { borderColor: colors.primary, backgroundColor: colors.cardHover },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={formatTimeLabel(item.startTime)}
+              >
+                <View style={styles.slotRow}>
+                  <Text style={[styles.slotText, { color: colors.text }]}>{formatTimeLabel(item.startTime)}</Text>
+                </View>
+              </Pressable>
+            );
+          }}
+        />
+
+        {selectedSlotId ? (
+          <View style={styles.bottomBar}>
+            <Button title={t('common.ok')} onPress={onNext} variant="primary" />
+          </View>
+        ) : null}
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
   title: { fontSize: 16, fontWeight: '700' },
-  list: { gap: 10, paddingVertical: 8 },
+  list: { gap: 10, paddingVertical: 8, paddingBottom: 24 },
   slot: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 10,
@@ -103,4 +112,5 @@ const styles = StyleSheet.create({
   },
   slotRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   slotText: { fontSize: 16, fontWeight: '600' },
+  bottomBar: { paddingTop: 10 },
 });
