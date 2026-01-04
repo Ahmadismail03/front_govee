@@ -96,19 +96,6 @@ export function ServiceDetailsScreen({ navigation, route }: Props) {
           </View>
         ))}
       </View>
-
-      {/* Steps */}
-      <Text style={styles.sectionTitle}>{t('services.steps')}</Text>
-      <View style={styles.list}>
-        {service.steps.map((s, idx) => (
-          <View key={s.id} style={styles.listItemContainer}>
-            <Text style={styles.listItem}>
-              {idx + 1}. {s.title}
-              {s.description ? ` — ${s.description}` : ''}
-            </Text>
-          </View>
-        ))}
-      </View>
     </Screen>
   );
 }

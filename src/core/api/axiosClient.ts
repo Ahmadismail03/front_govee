@@ -32,6 +32,38 @@ function attachRequestInterceptors(client: AxiosInstance): void {
   });
 }
 
+function attachResponseInterceptors(client: AxiosInstance): void {
+  client.interceptors.response.use(
+    (res) => res,
+    (error) => {
+      const status = error?.response?.status;
+      const backendMsg = error?.response?.data?.message;
+
+      if (backendMsg && typeof backendMsg === 'string') {
+        error.message = backendMsg;
+      } else if (status === 401) {
+        error.message = 'Session expired. Please sign in again.';
+      } else if (status === 409) {
+        error.message = 'Request could not be completed due to a conflict. Please review your input and try again.';
+      } else if (!error?.response) {
+        error.message = 'Network error. Please check your connection and try again.';
+      }
+
+      // Convert noisy DB errors into a user-friendly message.
+      if (
+        status === 409 &&
+        typeof error?.message === 'string' &&
+        error.message.toLowerCase().includes('unique') &&
+        error.message.toLowerCase().includes('email')
+      ) {
+        error.message = 'This email is already used by another account.';
+      }
+
+      return Promise.reject(error);
+    }
+  );
+}
+
 export function getApiClient(): AxiosInstance {
   if (realClient) return realClient;
 
@@ -41,6 +73,7 @@ export function getApiClient(): AxiosInstance {
   });
 
   attachRequestInterceptors(realClient);
+  attachResponseInterceptors(realClient);
   return realClient;
 }
 
@@ -54,5 +87,6 @@ export function getMockApiClient(): AxiosInstance {
   });
 
   attachRequestInterceptors(mockClient);
+  attachResponseInterceptors(mockClient);
   return mockClient;
 }

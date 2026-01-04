@@ -17,19 +17,6 @@ export function ServiceCard({ service, onPress }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
 
-  const categoryLabel = (c: string) => {
-    switch (c) {
-      case 'IDENTITY':
-        return t('services.categories.identity');
-      case 'TRANSPORT':
-        return t('services.categories.transport');
-      case 'PERMITS':
-        return t('services.categories.permits');
-      default:
-        return c;
-    }
-  };
-
   const imageSource = getServiceImageSource(service);
 
   const styles = React.useMemo(
@@ -188,9 +175,6 @@ export function ServiceCard({ service, onPress }: Props) {
           accessibilityIgnoresInvertColors
         />
         <View style={styles.imageOverlay} />
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{categoryLabel(service.category)}</Text>
-        </View>
       </View>
       
       <View style={styles.content}>
@@ -236,14 +220,6 @@ export function ServiceCard({ service, onPress }: Props) {
                 <Ionicons name="document-text-outline" size={16} color={colors.primary} />
                 <Text style={styles.infoText}>
                   {t('services.documentsCount', { count: service.requiredDocuments.length })}
-                </Text>
-              </View>
-            )}
-            {service.steps && service.steps.length > 0 && (
-              <View style={styles.infoItem}>
-                <Ionicons name="list-outline" size={16} color={colors.primary} />
-                <Text style={styles.infoText}>
-                  {t('services.stepsCount', { count: service.steps.length })}
                 </Text>
               </View>
             )}

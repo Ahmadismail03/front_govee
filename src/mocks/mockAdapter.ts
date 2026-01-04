@@ -80,13 +80,6 @@ function materializeService(locale: 'en' | 'ar', svc: any) {
     requiredDocuments: Array.isArray(svc.requiredDocuments)
       ? svc.requiredDocuments.map((k: string) => t(k))
       : [],
-    steps: Array.isArray(svc.steps)
-      ? svc.steps.map((s: any) => ({
-          ...s,
-          title: t(s.title),
-          description: s.description ? t(s.description) : undefined,
-        }))
-      : [],
   };
 }
 

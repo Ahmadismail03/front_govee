@@ -101,8 +101,8 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
       }
     }
 
+    // 1) Persist reminder preference as the user's default (DB-backed).
     try {
-      // Persist reminder preference as the user's default (DB-backed).
       if (reminderChannel === 'none') {
         await setChannel('none');
       } else {
@@ -110,7 +110,26 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
         await setChannel(reminderChannel);
         if (needsEmail) await setEmail(reminderEmail.trim());
       }
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const msg = e?.message;
 
+      if (status === 409) {
+        Alert.alert(
+          t('common.errorTitle'),
+          typeof msg === 'string' && msg.trim()
+            ? msg
+            : "You can't receive reminders on this email because it's already used by another user."
+        );
+        return;
+      }
+
+      Alert.alert(t('common.errorTitle'), typeof msg === 'string' && msg.trim() ? msg : undefined);
+      return;
+    }
+
+    // 2) Create the appointment.
+    try {
       const appt = await create({
         serviceId: route.params.serviceId,
         date: route.params.date,
@@ -120,8 +139,19 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
         reminderEmail: needsEmail ? reminderEmail.trim() : undefined,
       });
       navigation.replace('BookingSuccess', { referenceNumber: appt.referenceNumber });
-    } catch {
-      Alert.alert(t('common.errorTitle'));
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const msg = e?.message;
+
+      if (status === 409) {
+        Alert.alert(
+          t('common.errorTitle'),
+          'You already have an upcoming appointment for this service. Please reschedule or cancel it first.'
+        );
+        return;
+      }
+
+      Alert.alert(t('common.errorTitle'), typeof msg === 'string' && msg.trim() ? msg : undefined);
     }
   };
 

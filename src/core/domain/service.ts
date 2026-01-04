@@ -1,9 +1,3 @@
-export type ServiceStep = {
-  id: string;
-  title: string;
-  description?: string;
-};
-
 export type Service = {
   id: string;
   name: string;
@@ -13,6 +7,5 @@ export type Service = {
   imageKey?: 'promo_digital' | 'promo_citizen' | 'promo_services';
   requiredDocuments: string[];
   fees: number;
-  steps: ServiceStep[];
   isEnabled: boolean;
 };

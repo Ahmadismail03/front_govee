@@ -48,15 +48,6 @@ const services: Service[] = [
       'mock.services.svc_renew_id.documents.proofOfAddress',
     ],
     fees: 25,
-    steps: [
-      {
-        id: 'st_1',
-        title: 'mock.services.svc_renew_id.steps.submit.title',
-        description: 'mock.services.svc_renew_id.steps.submit.description',
-      },
-      { id: 'st_2', title: 'mock.services.svc_renew_id.steps.verify.title' },
-      { id: 'st_3', title: 'mock.services.svc_renew_id.steps.collect.title' },
-    ],
     isEnabled: true,
   },
   {
@@ -71,11 +62,6 @@ const services: Service[] = [
       'mock.services.svc_passport_renew.documents.nationalId',
     ],
     fees: 60,
-    steps: [
-      { id: 'st_1', title: 'mock.services.svc_passport_renew.steps.submit.title' },
-      { id: 'st_2', title: 'mock.services.svc_passport_renew.steps.verify.title' },
-      { id: 'st_3', title: 'mock.services.svc_passport_renew.steps.pickup.title' },
-    ],
     isEnabled: true,
   },
   {
@@ -89,10 +75,6 @@ const services: Service[] = [
       'mock.services.svc_birth_cert.documents.familyBook',
     ],
     fees: 10,
-    steps: [
-      { id: 'st_1', title: 'mock.services.svc_birth_cert.steps.request.title' },
-      { id: 'st_2', title: 'mock.services.svc_birth_cert.steps.receive.title' },
-    ],
     isEnabled: true,
   },
   {
@@ -106,11 +88,6 @@ const services: Service[] = [
       'mock.services.svc_vehicle_reg.documents.insurance',
     ],
     fees: 50,
-    steps: [
-      { id: 'st_1', title: 'mock.services.svc_vehicle_reg.steps.vehicleInfo.title' },
-      { id: 'st_2', title: 'mock.services.svc_vehicle_reg.steps.payFees.title' },
-      { id: 'st_3', title: 'mock.services.svc_vehicle_reg.steps.receive.title' },
-    ],
     isEnabled: true,
   },
   {
@@ -124,11 +101,6 @@ const services: Service[] = [
       'mock.services.svc_driver_license_renew.documents.medical',
     ],
     fees: 35,
-    steps: [
-      { id: 'st_1', title: 'mock.services.svc_driver_license_renew.steps.submit.title' },
-      { id: 'st_2', title: 'mock.services.svc_driver_license_renew.steps.pay.title' },
-      { id: 'st_3', title: 'mock.services.svc_driver_license_renew.steps.receive.title' },
-    ],
     isEnabled: true,
   },
   {
@@ -143,11 +115,6 @@ const services: Service[] = [
       'mock.services.svc_parking_permit.documents.proofOfResidence',
     ],
     fees: 15,
-    steps: [
-      { id: 'st_1', title: 'mock.services.svc_parking_permit.steps.apply.title' },
-      { id: 'st_2', title: 'mock.services.svc_parking_permit.steps.review.title' },
-      { id: 'st_3', title: 'mock.services.svc_parking_permit.steps.issue.title' },
-    ],
     isEnabled: true,
   },
   {
@@ -158,7 +125,6 @@ const services: Service[] = [
     imageKey: 'promo_digital',
     requiredDocuments: [],
     fees: 0,
-    steps: [],
     isEnabled: false,
   },
 ];

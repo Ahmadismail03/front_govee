@@ -33,11 +33,10 @@ function mapBackendServiceToDomain(svc: BackendServiceDetails): Service {
   return {
     id: svc.id,
     name: svc.canonicalName,
-    category: 'General',
+    category: '',
     description: svc.description ?? '',
     requiredDocuments,
     fees: Number.isFinite(fees) ? fees : 0,
-    steps: [],
     isEnabled: Boolean(svc.isActive),
   };
 }

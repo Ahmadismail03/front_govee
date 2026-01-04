@@ -418,7 +418,6 @@ export function SettingsScreen({ navigation }: Props) {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="person-outline" size={20} color={colors.primary} />
-          <Text style={styles.cardTitle}>{token ? t('settings.signOut') : t('settings.signIn')}</Text>
         </View>
         {token ? (
           <TouchableOpacity style={styles.dangerButton} onPress={() => signOut()} activeOpacity={0.7}>

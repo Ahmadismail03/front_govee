@@ -31,12 +31,18 @@ export function ServicesListScreen({ navigation }: Props) {
   const setSearch = useServicesStore((s) => s.setSearch);
   const setCategory = useServicesStore((s) => s.setCategory);
 
+  const [searchDraft, setSearchDraft] = React.useState(search);
+
   // Subscribe to raw state only; derive lists with useMemo to avoid React 19 getSnapshot issues.
   const rawServices = useServicesStore((s) => s.services);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    setSearchDraft(search);
+  }, [search]);
 
   const enabledServices = useMemo(() => {
     return rawServices.filter((s) => s.isEnabled);
@@ -53,7 +59,7 @@ export function ServicesListScreen({ navigation }: Props) {
   }, [enabledServices, search, category]);
 
   const categories = useMemo(() => {
-    const uniq = Array.from(new Set(enabledServices.map((s) => s.category))).sort();
+    const uniq = Array.from(new Set(enabledServices.map((s) => s.category).filter(Boolean))).sort();
     return ['ALL', ...uniq];
   }, [enabledServices]);
 
@@ -71,12 +77,9 @@ export function ServicesListScreen({ navigation }: Props) {
     }
   };
 
-
-  if (isLoading) return <LoadingView />;
-  if (error) return <ErrorView message={error} onRetry={load} />;
-
-  const ListHeader = () => (
-    <>
+  const listHeader = useMemo(
+    () => (
+      <>
       <View style={[styles.headerSection, { marginTop: -insets.top - spacing.md }]}>
         <ImageBackground
           source={{ uri: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&h=400&fit=crop' }}
@@ -96,50 +99,75 @@ export function ServicesListScreen({ navigation }: Props) {
         <Ionicons name="search-outline" size={iconSizes.md} color={colors.textTertiary} style={styles.searchIcon} />
         <TextInput
           style={styles.search}
-          value={search}
-          onChangeText={setSearch}
+          value={searchDraft}
+          onChangeText={setSearchDraft}
+          returnKeyType="search"
+          onSubmitEditing={() => setSearch(searchDraft)}
           placeholder={t('services.searchPlaceholder')}
           placeholderTextColor={colors.textTertiary}
           accessibilityLabel={t('services.searchPlaceholder')}
         />
-        {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')} style={styles.clearButton}>
+        {searchDraft.length > 0 && (
+          <Pressable
+            onPress={() => {
+              setSearchDraft('');
+              setSearch('');
+            }}
+            style={styles.clearButton}
+          >
             <Ionicons name="close-circle" size={iconSizes.md} color={colors.textTertiary} />
           </Pressable>
         )}
       </View>
 
-      <FlatList
-        data={categories}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chips}
-        keyExtractor={(item) => item}
-        renderItem={({ item: c }) => {
-          const label = categoryLabel(c);
-          const selected = category === c;
-          return (
-            <Pressable
-              key={c}
-              onPress={() => setCategory(c)}
-              style={[styles.chip, selected && styles.chipSelected]}
-              accessibilityRole="button"
-              accessibilityLabel={label}
-            >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-            </Pressable>
-          );
-        }}
-      />
-    </>
+      {categories.length > 1 ? (
+        <FlatList
+          data={categories}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}
+          keyExtractor={(item) => item}
+          renderItem={({ item: c }) => {
+            const label = categoryLabel(c);
+            const selected = category === c;
+            return (
+              <Pressable
+                key={c}
+                onPress={() => setCategory(c)}
+                style={[styles.chip, selected && styles.chipSelected]}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+              </Pressable>
+            );
+          }}
+        />
+      ) : null}
+      </>
+    ),
+    [
+      categories,
+      category,
+      colors.textTertiary,
+      insets.top,
+      searchDraft,
+      setCategory,
+      setSearch,
+      styles,
+      t,
+    ]
   );
+
+  if (isLoading) return <LoadingView />;
+  if (error) return <ErrorView message={error} onRetry={load} />;
 
   return (
     <Screen>
       <FlatList
         data={services}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={ListHeader}
+        ListHeaderComponent={listHeader}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (

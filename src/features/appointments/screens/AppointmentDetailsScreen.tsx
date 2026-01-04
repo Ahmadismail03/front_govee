@@ -121,9 +121,6 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      {/* Extra hint */}
-      <Text style={styles.hint}>{t('appointments.detailsHint')}</Text>
-
       {/* Actions */}
       <View style={styles.actionsRow}>
         <Button

@@ -58,7 +58,6 @@ export function AppointmentsListScreen({ navigation }: Props) {
         </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>{t('appointments.title')}</Text>
-          <Text style={styles.headerDescription}>{t('appointments.description')}</Text>
         </View>
       </View>
 
