@@ -38,13 +38,22 @@ export async function getReminderPreference(): Promise<ReminderPreference> {
 }
 
 export async function setReminderPreference(pref: ReminderPreference): Promise<ReminderPreference> {
-  // Backend source of truth for saving reminder settings.
+  const viaSms = pref.channel === 'sms' || pref.channel === 'both';
+  const viaEmail = pref.channel === 'email' || pref.channel === 'both';
+  const email = String(pref.email ?? '').trim();
+
+  // Backend validates `email` with zod.email() when present, so never send empty string.
+  // Also, backend requires an email when reminders are enabled via email.
+  if (pref.enabled && viaEmail && !email) {
+    throw new Error('Email is required when enabling email reminders.');
+  }
+
   await getApiClient().put('/me/reminder-settings', {
     enabled: pref.enabled,
     offsetMinutes: Math.max(1, Math.round((pref.leadTimeHours ?? 2) * 60)),
-    viaSms: pref.channel === 'sms' || pref.channel === 'both',
-    viaEmail: pref.channel === 'email' || pref.channel === 'both',
-    email: pref.email ?? undefined,
+    viaSms,
+    viaEmail,
+    ...(pref.enabled && viaEmail ? { email } : {}),
   });
   return pref;
 }

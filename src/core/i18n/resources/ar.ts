@@ -8,6 +8,10 @@ export const ar = {
     successTitle: 'تم',
     errorTitle: 'عذرًا! حدث خطأ ما',
     errorDesc: 'تعذر تحميل هذا المحتوى حاليًا.',
+    genericError: 'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
+    networkError: 'خطأ في الاتصال. يرجى التحقق من الإنترنت والمحاولة مرة أخرى.',
+    sessionExpired: 'انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى.',
+    conflictError: 'لا يمكن إكمال الطلب بسبب تعارض. يرجى المحاولة مرة أخرى.',
     emptyTitle: 'لا توجد بيانات بعد',
     male: 'ذكر',
     female: 'أنثى',
@@ -220,6 +224,7 @@ export const ar = {
     reminderEmailLabel: 'البريد الإلكتروني للتذكيرات',
     reminderEmailPlaceholder: 'أدخل بريدك الإلكتروني',
     reminderEmailInvalid: 'يرجى إدخال بريد إلكتروني صحيح.',
+    reminderEmailAlreadyUsed: 'هذا البريد الإلكتروني مستخدم من قبل حساب آخر.',
   },
   services: {
     title: 'الخدمات الحكومية',
@@ -416,6 +421,9 @@ export const ar = {
     dateLabel: 'التاريخ',
     timeLabel: 'الوقت',
     backToServices: 'الرجوع إلى الخدمات',
+    errors: {
+      duplicateUpcomingAppointment: 'لديك موعد قادم لهذه الخدمة بالفعل. يرجى إعادة الجدولة أو الإلغاء أولاً.',
+    },
   },
   appointments: {
     title: 'مواعيدي',

@@ -21,6 +21,7 @@ import { ErrorView } from '../../../shared/ui/ErrorView';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { spacing, typography, borderRadius, shadows, iconSizes } from '../../../shared/theme/tokens';
 import { useVoiceStore } from '../../voice/store/useVoiceStore';
+import { getCurrentLanguage } from '../../../core/i18n/init';
 
 type Props = BottomTabScreenProps<TabsParamList, 'HomeTab'>;
 
@@ -41,6 +42,7 @@ type QuickAction = {
 export function HomeScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
+  const isRtl = I18nManager.isRTL || getCurrentLanguage() === 'ar';
   const { width } = useWindowDimensions();
   const carouselRef = useRef<FlatList<Promo> | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -500,7 +502,7 @@ export function HomeScreen({ navigation }: Props) {
         <View style={styles.swipeHint}>
           <Text style={styles.swipeHintText}>{t('home.swipeHint')}</Text>
           <Ionicons
-            name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
+            name={isRtl ? 'chevron-back' : 'chevron-forward'}
             size={iconSizes.sm}
             color={colors.textTertiary}
           />
@@ -526,7 +528,7 @@ export function HomeScreen({ navigation }: Props) {
                 <Ionicons name={item.icon as any} size={iconSizes.md} color={colors.primary} />
               </View>
               <Ionicons
-                name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
+                name={isRtl ? 'chevron-back' : 'chevron-forward'}
                 size={iconSizes.sm}
                 color={colors.textTertiary}
               />

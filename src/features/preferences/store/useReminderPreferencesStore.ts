@@ -78,12 +78,15 @@ export const useReminderPreferencesStore = create<State>((set, get) => ({
       set({ pref: saved });
       await saveToStorage(saved);
     } catch (e: any) {
-      set({ error: e?.message ?? i18n.t('common.errorDesc') });
+      set({ pref: current, error: e?.message ?? i18n.t('common.errorDesc') });
+      await saveToStorage(current);
+      throw e;
     }
   },
 
   setLeadTimeHours: async (hours) => {
-    const next: ReminderPreference = { ...get().pref, leadTimeHours: hours };
+    const current = get().pref;
+    const next: ReminderPreference = { ...current, leadTimeHours: hours };
     set({ pref: next, error: null });
     await saveToStorage(next);
     try {
@@ -91,7 +94,9 @@ export const useReminderPreferencesStore = create<State>((set, get) => ({
       set({ pref: saved });
       await saveToStorage(saved);
     } catch (e: any) {
-      set({ error: e?.message ?? i18n.t('common.errorDesc') });
+      set({ pref: current, error: e?.message ?? i18n.t('common.errorDesc') });
+      await saveToStorage(current);
+      throw e;
     }
   },
 
@@ -104,17 +109,26 @@ export const useReminderPreferencesStore = create<State>((set, get) => ({
     };
     set({ pref: next, error: null });
     await saveToStorage(next);
+
+    if ((channel === 'email' || channel === 'both') && !String(current.email ?? '').trim()) {
+      set({ error: i18n.t('preferences.reminderEmailInvalid') });
+      return;
+    }
+
     try {
       const saved = await repo.setReminderPreference(next);
       set({ pref: saved });
       await saveToStorage(saved);
     } catch (e: any) {
-      set({ error: e?.message ?? i18n.t('common.errorDesc') });
+      set({ pref: current, error: e?.message ?? i18n.t('common.errorDesc') });
+      await saveToStorage(current);
+      throw e;
     }
   },
 
   setEmail: async (email) => {
-    const next: ReminderPreference = { ...get().pref, email };
+    const current = get().pref;
+    const next: ReminderPreference = { ...current, email };
     set({ pref: next, error: null });
     await saveToStorage(next);
     try {
@@ -122,7 +136,9 @@ export const useReminderPreferencesStore = create<State>((set, get) => ({
       set({ pref: saved });
       await saveToStorage(saved);
     } catch (e: any) {
-      set({ error: e?.message ?? i18n.t('common.errorDesc') });
+      set({ pref: current, error: e?.message ?? i18n.t('common.errorDesc') });
+      await saveToStorage(current);
+      throw e;
     }
   },
 }));

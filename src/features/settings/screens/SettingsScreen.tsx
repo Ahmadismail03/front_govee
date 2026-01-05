@@ -297,7 +297,11 @@ export function SettingsScreen({ navigation }: Props) {
             </Text>
             <TouchableOpacity
               style={[styles.toggle, pref.enabled && styles.toggleActive]}
-              onPress={() => setEnabled(!pref.enabled)}
+              onPress={async () => {
+                try {
+                  await setEnabled(!pref.enabled);
+                } catch {}
+              }}
               activeOpacity={0.7}
             >
               <View style={[styles.toggleThumb, pref.enabled && styles.toggleThumbActive]} />
@@ -330,7 +334,11 @@ export function SettingsScreen({ navigation }: Props) {
 
               <TouchableOpacity
                 style={[styles.radioOption, pref.channel === 'none' && styles.radioOptionSelected]}
-                onPress={() => setChannel('none')}
+                onPress={async () => {
+                  try {
+                    await setChannel('none');
+                  } catch {}
+                }}
                 activeOpacity={0.7}
               >
                 <View style={styles.radioOptionContent}>
@@ -347,7 +355,11 @@ export function SettingsScreen({ navigation }: Props) {
 
               <TouchableOpacity
                 style={[styles.radioOption, pref.channel === 'sms' && styles.radioOptionSelected]}
-                onPress={() => setChannel('sms')}
+                onPress={async () => {
+                  try {
+                    await setChannel('sms');
+                  } catch {}
+                }}
                 activeOpacity={0.7}
               >
                 <View style={styles.radioOptionContent}>
@@ -364,7 +376,11 @@ export function SettingsScreen({ navigation }: Props) {
 
               <TouchableOpacity
                 style={[styles.radioOption, pref.channel === 'email' && styles.radioOptionSelected]}
-                onPress={() => setChannel('email')}
+                onPress={async () => {
+                  try {
+                    await setChannel('email');
+                  } catch {}
+                }}
                 activeOpacity={0.7}
               >
                 <View style={styles.radioOptionContent}>
@@ -381,7 +397,11 @@ export function SettingsScreen({ navigation }: Props) {
 
               <TouchableOpacity
                 style={[styles.radioOption, pref.channel === 'both' && styles.radioOptionSelected]}
-                onPress={() => setChannel('both')}
+                onPress={async () => {
+                  try {
+                    await setChannel('both');
+                  } catch {}
+                }}
                 activeOpacity={0.7}
               >
                 <View style={styles.radioOptionContent}>
@@ -403,7 +423,11 @@ export function SettingsScreen({ navigation }: Props) {
                   placeholder={t('preferences.reminderEmailPlaceholder')}
                   value={emailDraft}
                   onChangeText={setEmailDraft}
-                  onEndEditing={() => setEmail(emailDraft.trim())}
+                  onEndEditing={async () => {
+                    try {
+                      await setEmail(emailDraft.trim());
+                    } catch {}
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />

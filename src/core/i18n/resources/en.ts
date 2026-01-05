@@ -10,6 +10,10 @@ export const en = {
     successTitle: 'Done',
     errorTitle: 'Oops! Something went wrong',
     errorDesc: 'We could not load this content right now.',
+    genericError: 'Something went wrong. Please try again.',
+    networkError: 'Network error. Please check your connection and try again.',
+    sessionExpired: 'Session expired. Please sign in again.',
+    conflictError: 'Request could not be completed due to a conflict. Please try again.',
     emptyTitle: 'Nothing here yet',
   },
   app: {
@@ -220,6 +224,7 @@ export const en = {
     reminderEmailLabel: 'Email for reminders',
     reminderEmailPlaceholder: 'Enter your email',
     reminderEmailInvalid: 'Please enter a valid email address.',
+    reminderEmailAlreadyUsed: 'This email is already used by another account.',
   },
   services: {
     title: 'Government Services',
@@ -416,6 +421,9 @@ export const en = {
     dateLabel: 'Date',
     timeLabel: 'Time',
     backToServices: 'Back to services',
+    errors: {
+      duplicateUpcomingAppointment: 'You already have an upcoming appointment for this service. Please reschedule or cancel it first.',
+    },
   },
   appointments: {
     title: 'My Appointments',

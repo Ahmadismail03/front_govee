@@ -2,7 +2,7 @@ import axios, { type AxiosInstance } from 'axios';
 import { getSecureItem, peekSecureItem } from '../storage/secureStorage';
 import { StorageKeys } from '../storage/keys';
 import { mockAdapter } from '../../mocks/mockAdapter';
-import { getCurrentLanguage } from '../i18n/init';
+import i18n, { getCurrentLanguage } from '../i18n/init';
 import { getSessionToken } from '../auth/session';
 
 let realClient: AxiosInstance | null = null;
@@ -38,27 +38,47 @@ function attachResponseInterceptors(client: AxiosInstance): void {
     (error) => {
       const status = error?.response?.status;
       const backendMsg = error?.response?.data?.message;
+      const method = String(error?.config?.method ?? '').toLowerCase();
+      const url = String(error?.config?.url ?? '');
+      const lng = getCurrentLanguage();
+      const isArabicUi = lng === 'ar';
 
+      const isArabicText = (value: unknown): boolean =>
+        typeof value === 'string' && /[\u0600-\u06FF]/.test(value);
+
+      const t = i18n.t.bind(i18n);
+
+      // Endpoint-specific conflicts we can localize reliably.
+      if (status === 409 && method === 'post' && /\/appointments\/?$/.test(url)) {
+        error.message = t('booking.errors.duplicateUpcomingAppointment');
+        return Promise.reject(error);
+      }
+
+      if (status === 409 && /\/me\/reminder-settings\/?$/.test(url)) {
+        error.message = t('preferences.reminderEmailAlreadyUsed');
+        return Promise.reject(error);
+      }
+
+      // Prefer backend message only when it matches the current UI language direction.
       if (backendMsg && typeof backendMsg === 'string') {
-        error.message = backendMsg;
-      } else if (status === 401) {
-        error.message = 'Session expired. Please sign in again.';
+        const backendLooksArabic = isArabicText(backendMsg);
+        const languageMatches = isArabicUi ? backendLooksArabic : !backendLooksArabic;
+        if (languageMatches) {
+          error.message = backendMsg;
+          return Promise.reject(error);
+        }
+      }
+
+      // Generic fallbacks (always localized)
+      if (status === 401) {
+        error.message = t('common.sessionExpired');
       } else if (status === 409) {
-        error.message = 'Request could not be completed due to a conflict. Please review your input and try again.';
+        error.message = t('common.conflictError');
       } else if (!error?.response) {
-        error.message = 'Network error. Please check your connection and try again.';
+        error.message = t('common.networkError');
+      } else {
+        error.message = t('common.genericError');
       }
-
-      // Convert noisy DB errors into a user-friendly message.
-      if (
-        status === 409 &&
-        typeof error?.message === 'string' &&
-        error.message.toLowerCase().includes('unique') &&
-        error.message.toLowerCase().includes('email')
-      ) {
-        error.message = 'This email is already used by another account.';
-      }
-
       return Promise.reject(error);
     }
   );

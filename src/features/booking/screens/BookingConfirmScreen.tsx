@@ -107,24 +107,18 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
         await setChannel('none');
       } else {
         await setLeadTimeHours(reminderLeadTimeHours as any);
-        await setChannel(reminderChannel);
         if (needsEmail) await setEmail(reminderEmail.trim());
+        await setChannel(reminderChannel);
       }
     } catch (e: any) {
       const status = e?.response?.status;
-      const msg = e?.message;
 
       if (status === 409) {
-        Alert.alert(
-          t('common.errorTitle'),
-          typeof msg === 'string' && msg.trim()
-            ? msg
-            : "You can't receive reminders on this email because it's already used by another user."
-        );
+        Alert.alert(t('common.errorTitle'), t('preferences.reminderEmailAlreadyUsed'));
         return;
       }
 
-      Alert.alert(t('common.errorTitle'), typeof msg === 'string' && msg.trim() ? msg : undefined);
+      Alert.alert(t('common.errorTitle'), e?.message ?? t('common.genericError'));
       return;
     }
 
@@ -141,17 +135,13 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
       navigation.replace('BookingSuccess', { referenceNumber: appt.referenceNumber });
     } catch (e: any) {
       const status = e?.response?.status;
-      const msg = e?.message;
 
       if (status === 409) {
-        Alert.alert(
-          t('common.errorTitle'),
-          'You already have an upcoming appointment for this service. Please reschedule or cancel it first.'
-        );
+        Alert.alert(t('common.errorTitle'), t('booking.errors.duplicateUpcomingAppointment'));
         return;
       }
 
-      Alert.alert(t('common.errorTitle'), typeof msg === 'string' && msg.trim() ? msg : undefined);
+      Alert.alert(t('common.errorTitle'), e?.message ?? t('common.genericError'));
     }
   };
 

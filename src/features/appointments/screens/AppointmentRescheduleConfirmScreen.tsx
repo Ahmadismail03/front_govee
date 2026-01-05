@@ -58,8 +58,8 @@ export function AppointmentRescheduleConfirmScreen({ navigation, route }: Props)
         slotId: route.params.slotId,
       });
       navigation.replace('AppointmentDetails', { appointmentId: appt.id });
-    } catch {
-      Alert.alert(t('common.errorTitle'));
+    } catch (e: any) {
+      Alert.alert(t('common.errorTitle'), e?.message ?? t('common.errorDesc'));
     }
   };
 
