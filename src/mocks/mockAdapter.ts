@@ -212,7 +212,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
     const otp = String(body.otp ?? '').trim();
     const rec = mockDb.otpRequests.find((r) => r.requestId === requestId);
     if (!rec) return json(config, 400, { message: 'Invalid requestId' });
-    
+
     // Accept any OTP for mock/demo purposes (any 6-digit number)
     if (!otp || otp.length < 6 || !/^\d+$/.test(otp)) {
       return json(config, 400, { message: 'OTP must be at least 6 digits' });
@@ -509,10 +509,11 @@ export const mockAdapter: AxiosAdapter = async (config) => {
   // POST /voice/process
   if (method === 'post' && path === '/voice/process') {
     await delay(1000); // Simulate voice processing time
-    
+
     const body = parseBody(config);
     const userMessage = String(body.message ?? '').trim().toLowerCase();
     const t = i18n.getFixedT(locale);
+    const isAuthenticated = !!getAuthToken(config);
 
     // Deterministic prefill test cases (frontend-only)
     // - prefill1 -> { serviceId }
@@ -573,12 +574,50 @@ export const mockAdapter: AxiosAdapter = async (config) => {
         },
       });
     }
-    
-    // Simple intent detection for demo
-    let assistantMessage = t('voice.mock.default');
+
+    let assistantMessage = isAuthenticated
+      ? t('voice.mock.defaultAuthenticated') || 'Hello! I can help you with booking appointments, checking your services, and answering questions. How can I assist you today?'
+      : t('voice.mock.default');
     let action = undefined;
-    
-    if (userMessage.includes('book') || userMessage.includes('appointment') || userMessage.includes('حجز')) {
+
+    // Authentication commands
+    if (userMessage.includes('login') || userMessage.includes('sign in') || userMessage.includes('log in') ||
+      userMessage.includes('تسجيل دخول') || userMessage.includes('دخول')) {
+      if (isAuthenticated) {
+        assistantMessage = 'You are already signed in. Is there something else I can help you with?';
+        action = undefined;
+      } else {
+        assistantMessage = 'I\'ll help you sign in to your account. Let me open the login screen.';
+        action = {
+          type: 'auth' as const,
+          action: 'login' as const,
+        };
+      }
+    } else if (userMessage.includes('signup') || userMessage.includes('sign up') || userMessage.includes('register') ||
+      userMessage.includes('تسجيل') || userMessage.includes('إنشاء حساب')) {
+      if (isAuthenticated) {
+        assistantMessage = 'You are already signed in. If you want to create another account, please sign out first.';
+        action = undefined;
+      } else {
+        assistantMessage = 'I\'ll help you create a new account. Let me open the signup screen.';
+        action = {
+          type: 'auth' as const,
+          action: 'signup' as const,
+        };
+      }
+    } else if (userMessage.includes('logout') || userMessage.includes('sign out') || userMessage.includes('log out') ||
+      userMessage.includes('خروج')) {
+      if (isAuthenticated) {
+        assistantMessage = 'I\'ll help you sign out of your account.';
+        action = {
+          type: 'auth' as const,
+          action: 'logout' as const,
+        };
+      } else {
+        assistantMessage = 'You are not currently signed in. Is there something else I can help you with?';
+        action = undefined;
+      }
+    } else if (userMessage.includes('book') || userMessage.includes('appointment') || userMessage.includes('حجز')) {
       assistantMessage = t('voice.mock.bookingPrompt');
       if (userMessage.includes('id') || userMessage.includes('renewal') || userMessage.includes('هوية')) {
         assistantMessage = t('voice.mock.bookingIdRenewal');
@@ -598,7 +637,7 @@ export const mockAdapter: AxiosAdapter = async (config) => {
     } else if (userMessage.includes('document') || userMessage.includes('مستند')) {
       assistantMessage = t('voice.mock.documentsInfo');
     }
-    
+
     const sessionId = `voice_session_${Date.now()}`;
     return json(config, 200, {
       sessionId,

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { Buffer } from "buffer";
+(global as any).Buffer = Buffer;
 import { enableScreens } from 'react-native-screens';
 import { initI18n } from '../core/i18n/init';
 import { RootNavigator } from '../navigation/RootNavigator';
@@ -8,6 +9,7 @@ import { useAuthStore } from '../features/auth/store/useAuthStore';
 import { ErrorView } from '../shared/ui/ErrorView';
 import { useThemeStore } from '../core/theme/useThemeStore';
 import { useLanguageChangeStore } from '../core/i18n/store/useLanguageChangeStore';
+import { useEffect, useState } from "react";
 
 enableScreens();
 

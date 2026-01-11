@@ -8,13 +8,13 @@ import { getSessionToken } from '../auth/session';
 let realClient: AxiosInstance | null = null;
 let mockClient: AxiosInstance | null = null;
 
-function getApiBaseUrl(): string {
+export function getApiBaseUrl(): string {
   // Expo: define in app env as EXPO_PUBLIC_API_BASE_URL
   // Examples:
   // - Android emulator: http://10.0.2.2:4000
   // - iOS simulator: http://localhost:4000
   // - Physical device: http://<your-lan-ip>:4000
-  return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+  return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://10.0.0.46:4000';
 }
 
 function attachRequestInterceptors(client: AxiosInstance): void {

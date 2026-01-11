@@ -6,9 +6,14 @@ import {
   setSecureItem,
 } from '../../../core/storage/secureStorage';
 import type { User } from '../../../core/domain/user';
+import { useVoiceStore } from '../../voice/store/useVoiceStore';
 import * as authRepo from '../api/authRepository';
 import { setSessionToken } from '../../../core/auth/session';
 import { useProfileStore } from '../../profile/store/useProfileStore';
+import { processVoiceMessage } from '../../voice/api/voiceRepository';
+import { getApiBaseUrl } from '../../../core/api/axiosClient';
+import { startRecording } from '../../voice/useVoiceRecorder';
+import { playTts } from '../../voice/components/VoiceAssistantSheet';
 
 export type AuthStatus = 'hydrating' | 'anonymous' | 'authenticated';
 
@@ -19,6 +24,12 @@ type AuthState = {
   isLoading: boolean;
   error: string | null;
   hasBootstrapped: boolean;
+  collectedAuthData: {
+    nationalId?: string;
+    phoneNumber?: string;
+    fullName?: string;
+    otp?: string;
+  } | null;
   setToken: (token: string | null) => void;
   setAuthStatus: (status: AuthStatus) => void;
   bootstrap: () => Promise<void>;
@@ -26,6 +37,7 @@ type AuthState = {
   requestSignupOtp: (nationalId: string, phoneNumber: string, fullName: string) => Promise<authRepo.RequestOtpResponse>;
   verifyOtp: (phoneNumber: string, otp: string) => Promise<authRepo.VerifyOtpResponse>;
   signOut: () => Promise<void>;
+  setCollectedAuthData: (data: any) => void;
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -35,6 +47,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   error: null,
   hasBootstrapped: false,
+  collectedAuthData: null,
 
   setToken: (token) => {
     setSessionToken(token);
@@ -79,6 +92,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await authRepo.requestLoginOtp(nationalId, phoneNumber);
+      // Store collected auth data
+      set({ collectedAuthData: { nationalId, phoneNumber } });
       set({ isLoading: false });
       return res;
     } catch (e: any) {
@@ -91,6 +106,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await authRepo.requestSignupOtp(nationalId, phoneNumber, fullName);
+      // Store collected auth data
+      set({ collectedAuthData: { nationalId, phoneNumber, fullName } });
       set({ isLoading: false });
       return res;
     } catch (e: any) {
@@ -106,6 +123,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await setSecureItem(StorageKeys.authToken, res.token);
       await setSecureItem(StorageKeys.authUser, JSON.stringify(res.user));
       setSessionToken(res.token);
+      
+      // Update collected auth data with OTP
+      const currentData = get().collectedAuthData;
+      if (currentData) {
+        const updated = { ...currentData, otp };
+        set({ collectedAuthData: updated });
+
+        const voiceStore = useVoiceStore.getState();
+        if (voiceStore.authTriggeredByVoice) {
+          voiceStore.setPendingAuthData(updated);
+        }
+      }
       set({
         token: res.token,
         user: res.user,
@@ -113,6 +142,61 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         hasBootstrapped: true,
         isLoading: false,
       });
+
+      const voiceStore = useVoiceStore.getState();
+
+      console.log("AUTH SUCCESS → SYNC WITH DECISION", {
+        sessionId: voiceStore.sessionId,
+        hasToken: !!res.token,
+      });
+      const API_BASE = getApiBaseUrl();
+      if (voiceStore.sessionId && res.token) {
+        const url = `${API_BASE}/decision/auth/sync`;
+
+        console.log("[AUTH→DECISION] preparing sync", {
+          url,
+          sessionId: voiceStore.sessionId,
+          tokenLength: res.token.length,
+        });
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: voiceStore.sessionId,
+            authToken: res.token,
+          }),
+        });
+
+        console.log("[AUTH→DECISION] response status", response.status);
+
+        const rawText = await response.text();
+        console.log(" [AUTH→DECISION] response body", rawText);
+
+        let decision: any;
+        try {
+          decision = JSON.parse(rawText);
+        } catch (e) {
+          console.error("❌ Failed to parse decision response", e);
+          throw new Error("Invalid decision response from /auth/sync");
+        }
+
+        // DEBUG 
+        console.log("[AUTH→DECISION] parsed", {
+          stage: decision?.stage,
+          message: decision?.message,
+          sessionId: decision?.sessionId,
+        });
+
+        if (decision.audioBase64) {
+          const voice = useVoiceStore.getState();
+
+          voice.setRecordingState("playing");
+          await playTts(decision.audioBase64);
+          voice.setRecordingState("idle");
+          voice.setShouldResumeListening(true);
+        }
+      }
 
       // Keep profile name in sync with backend user.
       const name = (res.user as any)?.fullName;
@@ -131,8 +215,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await removeSecureItem(StorageKeys.authToken);
     await removeSecureItem(StorageKeys.authUser);
     setSessionToken(null);
-    set({ token: null, user: null, authStatus: 'anonymous', hasBootstrapped: true });
+    set({ token: null, user: null, authStatus: 'anonymous', hasBootstrapped: true, collectedAuthData: null });
   },
+
+  setCollectedAuthData: (data) => set({ collectedAuthData: data }),
 }));
 
 export function isVerified(): boolean {

@@ -491,6 +491,7 @@ export const en = {
         noSlot: 'Prefill4: no slot found; falling back to service + date.',
       },
       default: 'I can help you with booking appointments, checking services, and answering questions. How can I assist you today?',
+      defaultAuthenticated: 'Hello! I can help you with booking appointments, checking your services, and answering questions. How can I assist you today?',   
       bookingPrompt: 'I can help you book an appointment. Which service would you like to book?',
       bookingIdRenewal: 'I will help you book an appointment for National ID Renewal. Let me take you to the booking screen.',
       servicesNavigate: 'You can browse all available government services. Let me show you the services list.',

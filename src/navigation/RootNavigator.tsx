@@ -37,6 +37,11 @@ export function RootNavigator() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const colors = useThemeColors();
 
+  // Debug navigation ref
+  React.useEffect(() => {
+    console.log("🧭 Navigation ref ready:", !!navigationRef.current);
+  }, [navigationRef.current]);
+
   return (
     <NavigationContainer ref={navigationRef}>
       <View style={styles.root}>
@@ -244,7 +249,21 @@ export function RootNavigator() {
           <Stack.Screen name="HelpTopicDetails" component={HelpTopicDetailsScreen} />
         </Stack.Navigator>
 
-        <VoiceAssistantSheet />
+        <VoiceAssistantSheet onNavigate={(screen, params) => {
+          console.log("🎯 VoiceAssistantSheet onNavigate called:", screen, params);
+          console.log("🧭 navigationRef.current:", navigationRef.current);
+          if (navigationRef.current) {
+            console.log("🚀 Executing navigation to:", screen);
+            try {
+              (navigationRef.current as any).navigate(screen, params);
+              console.log("✅ Navigation executed successfully");
+            } catch (error) {
+              console.log("❌ Navigation failed:", error);
+            }
+          } else {
+            console.log("❌ navigationRef.current is null");
+          }
+        }} />
       </View>
     </NavigationContainer>
   );

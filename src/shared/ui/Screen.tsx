@@ -14,9 +14,11 @@ type Props = {
 export function Screen({ children, scroll, keyboardAvoiding }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
+ // const headerHeight = useHeaderHeight();
 
-  const keyboardVerticalOffset = Platform.OS === 'ios' ? Math.max(headerHeight, insets.top) : 0;
+ // const keyboardVerticalOffset = Platform.OS === 'ios' ? Math.max(headerHeight, insets.top) : 0;
+const keyboardVerticalOffset =
+  Platform.OS === 'ios' ? insets.top : 0;
   const bottomPad = insets.bottom + spacing.xxxl;
 
   const styles = React.useMemo(
