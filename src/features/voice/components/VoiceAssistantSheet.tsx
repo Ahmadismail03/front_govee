@@ -56,7 +56,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const error = useVoiceStore((s) => s.error);
 
   useEffect(() => {
-    if (!isOpen) return; 
+    if (!isOpen) return;
 
     const voice = useVoiceStore.getState();
 
@@ -135,7 +135,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const handleClose = async () => {
     try {
       if (recordingState === "listening") {
-        await stopRecording(); 
+        await stopRecording();
       }
     } catch (err) {
       console.warn("Stop recording on close failed", err);
@@ -237,7 +237,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
       if (authStep === 'otp') {
         // Call verifyOtp
-        await verifyOtp(authInputs.phoneNumber, currentValue);
+         verifyOtp(authInputs.phoneNumber, currentValue);
         const voice = useVoiceStore.getState();
         voice.setPendingAuthData({
           nationalId: authInputs.nationalId,
@@ -245,16 +245,23 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
           fullName: authInputs.fullName,
           otp: currentValue,
         });
-
-        // Auth completed successfully
         setIsInAuthFlow(false);
         setAuthStep(null);
-        setAuthInputs({ nationalId: '', phoneNumber: '', fullName: '', otp: '' });
+        setAuthInputs({
+          nationalId: '',
+          phoneNumber: '',
+          fullName: '',
+          otp: '',
+        });
+        setAuthLoading(false);
 
-        // Continue the conversation - the voice assistant should now show service options
-        console.log("✅ Authentication completed, voice assistant ready for service selection");
+        verifyOtp(authInputs.phoneNumber, currentValue)
+          .catch((error) => {
+            console.error('verifyOtp failed:', error);
+            Alert.alert('Error', 'Authentication failed. Please try again.');
+          });
+        return;
       }
-
     } catch (error) {
       console.error('❌ Auth step failed:', error);
       Alert.alert('Error', 'Authentication failed. Please try again.');
@@ -335,7 +342,6 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       console.error("❌ Error processing audio:", err);
       setRecordingState("error");
     }
-
   };
 
   return (
@@ -367,7 +373,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
                 placeholder={getAuthStepPlaceholder()}
                 value={authInputs[authStep]}
                 onChangeText={(value) => handleAuthInputChange(authStep, value)}
-                keyboardType={authStep === 'phoneNumber' || authStep === 'otp'|| authStep === 'nationalId' ? 'phone-pad' : 'default'}
+                keyboardType={authStep === 'phoneNumber' || authStep === 'otp' || authStep === 'nationalId' ? 'phone-pad' : 'default'}
                 secureTextEntry={authStep === 'otp'}
                 autoCapitalize={authStep === 'fullName' ? 'words' : 'none'}
                 autoCorrect={false}
