@@ -6,6 +6,7 @@ import type {
 } from '../../../core/domain/voice';
 import i18n from '../../../core/i18n/init';
 import { processVoiceMessage } from '../api/voiceRepository';
+import { useAuthStore } from '../../auth/store/useAuthStore';
 
 type PendingAuthData = {
   nationalId?: string;
@@ -118,6 +119,17 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
     })),
 
   processMessage: async (message: string) => {
+    // Check token validity before processing voice message
+    const authStore = useAuthStore.getState();
+    if (authStore.authStatus === 'authenticated' && authStore.token) {
+      // Validate token before voice interaction
+      const isTokenValid = await authStore.validateToken();
+      if (!isTokenValid) {
+        console.log('Token validation failed before voice interaction');
+        // Token was invalid and user has been logged out
+        // Voice request will proceed without token, backend should handle IDENTITY stage
+      }
+    }
 
     const trimmed = String(message ?? '').trim();
     const userMsg: VoiceMessage | null = trimmed

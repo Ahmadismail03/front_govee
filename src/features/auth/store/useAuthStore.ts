@@ -11,8 +11,12 @@ import * as authRepo from '../api/authRepository';
 import { setSessionToken } from '../../../core/auth/session';
 import { useProfileStore } from '../../profile/store/useProfileStore';
 import { processVoiceMessage } from '../../voice/api/voiceRepository';
-import { getApiBaseUrl } from '../../../core/api/axiosClient';
+import { getApiBaseUrl, getApiClient } from '../../../core/api/axiosClient';
 import { startRecording } from '../../voice/useVoiceRecorder';
+
+function makeId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 import { playTts } from '../../voice/components/VoiceAssistantSheet';
 
 export type AuthStatus = 'hydrating' | 'anonymous' | 'authenticated';
@@ -37,6 +41,7 @@ type AuthState = {
   requestSignupOtp: (nationalId: string, phoneNumber: string, fullName: string) => Promise<authRepo.RequestOtpResponse>;
   verifyOtp: (phoneNumber: string, otp: string) => Promise<authRepo.VerifyOtpResponse>;
   signOut: () => Promise<void>;
+  validateToken: () => Promise<boolean>;
   setCollectedAuthData: (data: any) => void;
 };
 
@@ -69,13 +74,55 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           user = null;
         }
       }
-      setSessionToken(token ?? null);
-      set({
-        token: token ?? null,
-        user,
-        authStatus: token ? 'authenticated' : 'anonymous',
-        hasBootstrapped: true,
-      });
+
+      // If we have a token, validate it with the backend
+      if (token) {
+        try {
+          // Make a lightweight API call to validate the token
+          // Using a simple endpoint that requires authentication
+          const client = getApiClient();
+          setSessionToken(token); // Temporarily set token for validation request
+          await client.get('/me/notifications'); // Lightweight auth check
+
+          // Token is valid
+          setSessionToken(token);
+          set({
+            token: token,
+            user,
+            authStatus: 'authenticated',
+            hasBootstrapped: true,
+          });
+
+          // Create sessionId for voice system if authentication is restored
+          const voiceStore = useVoiceStore.getState();
+          if (!voiceStore.sessionId) {
+            const sessionId = makeId('voice_session');
+            voiceStore.setSessionId(sessionId);
+            console.log("BOOTSTRAP → CREATED SESSION FOR RESTORED AUTH", { sessionId });
+          }
+        } catch (validationError: any) {
+          // Token is invalid/expired - clear it
+          console.log('Token validation failed on bootstrap:', validationError?.message);
+          await removeSecureItem(StorageKeys.authToken);
+          await removeSecureItem(StorageKeys.authUser);
+          setSessionToken(null);
+          set({
+            token: null,
+            user: null,
+            authStatus: 'anonymous',
+            hasBootstrapped: true,
+          });
+        }
+      } else {
+        // No token stored
+        setSessionToken(null);
+        set({
+          token: null,
+          user: null,
+          authStatus: 'anonymous',
+          hasBootstrapped: true,
+        });
+      }
     } catch (e: any) {
       set({
         token: null,
@@ -145,17 +192,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const voiceStore = useVoiceStore.getState();
 
+      // Create sessionId if it doesn't exist (for app-based authentication)
+      let sessionId = voiceStore.sessionId;
+      if (!sessionId) {
+        sessionId = makeId('voice_session');
+        voiceStore.setSessionId(sessionId);
+        console.log("AUTH SUCCESS → CREATED NEW SESSION", { sessionId });
+      }
+
       console.log("AUTH SUCCESS → SYNC WITH DECISION", {
-        sessionId: voiceStore.sessionId,
+        sessionId,
         hasToken: !!res.token,
       });
       const API_BASE = getApiBaseUrl();
-      if (voiceStore.sessionId && res.token) {
+      if (sessionId && res.token) {
         const url = `${API_BASE}/decision/auth/sync`;
 
         console.log("[AUTH→DECISION] preparing sync", {
           url,
-          sessionId: voiceStore.sessionId,
+          sessionId,
           tokenLength: res.token.length,
         });
 
@@ -163,7 +218,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sessionId: voiceStore.sessionId,
+            sessionId,
             authToken: res.token,
           }),
         });
@@ -191,10 +246,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (decision.audioBase64) {
           const voice = useVoiceStore.getState();
 
-          voice.setRecordingState("playing");
-          await playTts(decision.audioBase64);
-          voice.setRecordingState("idle");
-          voice.setShouldResumeListening(true);
+          // Only play audio if voice interface is actually open
+          if (voice.isOpen) {
+            voice.setRecordingState("playing");
+            await playTts(decision.audioBase64);
+            voice.setRecordingState("idle");
+            voice.setShouldResumeListening(true);
+          } else {
+            console.log("[AUTH→DECISION] Skipping audio playback - voice interface not open");
+          }
         }
       }
 
@@ -215,7 +275,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await removeSecureItem(StorageKeys.authToken);
     await removeSecureItem(StorageKeys.authUser);
     setSessionToken(null);
+
+    // Terminate any active voice session
+    const voiceStore = useVoiceStore.getState();
+    if (voiceStore.sessionId) {
+      voiceStore.clear();
+    }
+
     set({ token: null, user: null, authStatus: 'anonymous', hasBootstrapped: true, collectedAuthData: null });
+  },
+
+  // Validate token with backend (can be called before voice interactions)
+  validateToken: async (): Promise<boolean> => {
+    const token = get().token;
+    if (!token) return false;
+
+    try {
+      const client = getApiClient();
+      await client.get('/me/notifications'); // Lightweight auth check
+      return true;
+    } catch (error) {
+      // Token is invalid - trigger logout
+      await get().signOut();
+      return false;
+    }
   },
 
   setCollectedAuthData: (data) => set({ collectedAuthData: data }),

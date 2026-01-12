@@ -4,6 +4,7 @@ import { StorageKeys } from '../storage/keys';
 import { mockAdapter } from '../../mocks/mockAdapter';
 import i18n, { getCurrentLanguage } from '../i18n/init';
 import { getSessionToken } from '../auth/session';
+import { handleTokenExpiration } from '../auth/authUtils';
 
 let realClient: AxiosInstance | null = null;
 let mockClient: AxiosInstance | null = null;
@@ -48,6 +49,13 @@ function attachResponseInterceptors(client: AxiosInstance): void {
 
       const t = i18n.t.bind(i18n);
 
+      // Handle token expiration (401) - logout and terminate voice sessions
+      if (status === 401) {
+        handleTokenExpiration();
+        error.message = t('common.sessionExpired');
+        return Promise.reject(error);
+      }
+
       // Endpoint-specific conflicts we can localize reliably.
       if (status === 409 && method === 'post' && /\/appointments\/?$/.test(url)) {
         error.message = t('booking.errors.duplicateUpcomingAppointment');
@@ -70,9 +78,7 @@ function attachResponseInterceptors(client: AxiosInstance): void {
       }
 
       // Generic fallbacks (always localized)
-      if (status === 401) {
-        error.message = t('common.sessionExpired');
-      } else if (status === 409) {
+      if (status === 409) {
         error.message = t('common.conflictError');
       } else if (!error?.response) {
         error.message = t('common.networkError');
