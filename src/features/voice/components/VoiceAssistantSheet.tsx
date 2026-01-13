@@ -257,14 +257,13 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
         verifyOtp(authInputs.phoneNumber, currentValue)
           .catch((error) => {
-            console.error('verifyOtp failed:', error);
-            Alert.alert('Error', 'Authentication failed. Please try again.');
+            console.error("❌ verifyOtp failed:", error);
+            // Alert.alert('Error', 'Authentication failed. Please try again.');
           });
         return;
       }
     } catch (error) {
-      console.error('❌ Auth step failed:', error);
-      Alert.alert('Error', 'Authentication failed. Please try again.');
+      console.log("❌Error during authentication step:", error);
     } finally {
       setAuthLoading(false);
     }

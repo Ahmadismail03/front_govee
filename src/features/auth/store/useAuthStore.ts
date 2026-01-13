@@ -10,9 +10,7 @@ import { useVoiceStore } from '../../voice/store/useVoiceStore';
 import * as authRepo from '../api/authRepository';
 import { setSessionToken } from '../../../core/auth/session';
 import { useProfileStore } from '../../profile/store/useProfileStore';
-import { processVoiceMessage } from '../../voice/api/voiceRepository';
 import { getApiBaseUrl, getApiClient } from '../../../core/api/axiosClient';
-import { startRecording } from '../../voice/useVoiceRecorder';
 
 function makeId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -226,7 +224,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.log("[AUTH→DECISION] response status", response.status);
 
         const rawText = await response.text();
-        console.log(" [AUTH→DECISION] response body", rawText);
+        // console.log(" [AUTH→DECISION] response body", rawText);
 
         let decision: any;
         try {

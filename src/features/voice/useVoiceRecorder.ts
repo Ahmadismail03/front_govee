@@ -62,7 +62,6 @@ export async function stopRecording(): Promise<string | null> {
     silenceTimer = undefined;
   }
   if (monitoringInterval) {
-    console.log("🧹 Clearing monitoring interval");
     clearInterval(monitoringInterval);
     monitoringInterval = undefined;
   }
