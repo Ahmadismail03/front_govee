@@ -9,7 +9,12 @@ type ServicesState = {
   error: string | null;
   search: string;
   category: string;
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
   load: () => Promise<void>;
+  setPage: (page: number) => void;
   setSearch: (v: string) => void;
   setCategory: (v: string) => void;
 };
@@ -20,18 +25,31 @@ export const useServicesStore = create<ServicesState>((set, get) => ({
   error: null,
   search: '',
   category: 'ALL',
+  page: 1,
+  limit: 20,
+  total: 0,
+  totalPages: 1,
 
   load: async () => {
     set({ isLoading: true, error: null });
     try {
-      const services = await repo.getServices();
-      set({ services, isLoading: false });
+      const { page, limit, search } = get();
+      const res = await repo.getServices({ page, limit, query: search.trim() || undefined });
+      set({
+        services: res.services,
+        page: res.page,
+        limit: res.limit,
+        total: res.total,
+        totalPages: res.totalPages,
+        isLoading: false,
+      });
     } catch (e: any) {
       set({ isLoading: false, error: e?.message ?? i18n.t('common.errorDesc') });
     }
   },
 
-  setSearch: (v) => set({ search: v }),
+  setPage: (page) => set({ page: Math.max(1, Math.floor(page || 1)) }),
+  setSearch: (v) => set({ search: v, page: 1 }),
   setCategory: (v) => set({ category: v }),
 }));
 

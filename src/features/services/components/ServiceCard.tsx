@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { I18nManager, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Service } from '../../../core/domain/service';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { formatFees } from '../../../shared/utils/format';
+import { formatMoney } from '../../../shared/utils/format';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { getServiceImageSource } from '../utils/serviceImages';
+import { getFeeDisplayDescription, getServiceDisplayDescription, getServiceDisplayName } from '../utils/localization';
 
 type Props = {
   service: Service;
@@ -14,8 +15,23 @@ type Props = {
 };
 
 export function ServiceCard({ service, onPress }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = useThemeColors();
+  const [feesExpanded, setFeesExpanded] = useState(false);
+
+  const displayName = useMemo(() => getServiceDisplayName(service, i18n.language), [service, i18n.language]);
+  const displayDescription = useMemo(
+    () => getServiceDisplayDescription(service, i18n.language),
+    [service, i18n.language]
+  );
+
+  const feesBreakdown = useMemo(
+    () => (Array.isArray(service.feesBreakdown) ? service.feesBreakdown : []),
+    [service.feesBreakdown]
+  );
+
+  const hasMultipleFees = feesBreakdown.length > 1;
+  const currency = 'JOD';
 
   const imageSource = getServiceImageSource(service);
 
@@ -134,6 +150,37 @@ export function ServiceCard({ service, onPress }: Props) {
           color: colors.text,
           fontWeight: typography.semibold,
         },
+        feesValueRow: {
+          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          alignItems: 'center',
+          gap: spacing.xs,
+          alignSelf: 'flex-start',
+        },
+        feesDropdown: {
+          borderWidth: 1,
+          borderRadius: borderRadius.md,
+          overflow: 'hidden',
+          marginTop: spacing.xs,
+        },
+        feeRow: {
+          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.md,
+          gap: spacing.md,
+        },
+        feeDesc: {
+          flex: 1,
+          fontSize: typography.xs,
+          fontWeight: typography.medium,
+          textAlign: I18nManager.isRTL ? 'right' : 'left',
+        },
+        feeAmount: {
+          fontSize: typography.xs,
+          fontWeight: typography.semibold,
+          textAlign: I18nManager.isRTL ? 'left' : 'right',
+        },
         infoSection: {
           flexDirection: 'row',
           gap: spacing.md,
@@ -165,7 +212,7 @@ export function ServiceCard({ service, onPress }: Props) {
       ]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={service.name}
+      accessibilityLabel={displayName}
     >
       <View style={styles.imageContainer}>
         <Image
@@ -181,7 +228,7 @@ export function ServiceCard({ service, onPress }: Props) {
         {/* Service Title */}
         <View style={styles.titleRow}>
           <Text style={styles.name} numberOfLines={2}>
-            {service.name}
+            {displayName}
           </Text>
           <Pressable onPress={onPress} style={styles.detailsButton}>
             <Ionicons
@@ -195,7 +242,7 @@ export function ServiceCard({ service, onPress }: Props) {
         {/* Service Description */}
         <View style={styles.descriptionContainer}>
           <Text style={styles.description} numberOfLines={4}>
-            {service.description}
+            {displayDescription}
           </Text>
         </View>
 
@@ -208,7 +255,45 @@ export function ServiceCard({ service, onPress }: Props) {
               </View>
               <View style={styles.detailTextContainer}>
                 <Text style={styles.detailLabel}>{t('services.fees')}</Text>
-                <Text style={styles.detailValue}>{formatFees(service.fees)}</Text>
+                <Pressable
+                  onPress={() => {
+                    if (!hasMultipleFees) return;
+                    setFeesExpanded((v) => !v);
+                  }}
+                  accessibilityRole={hasMultipleFees ? 'button' : undefined}
+                  style={({ pressed }) => [
+                    styles.feesValueRow,
+                    hasMultipleFees && pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <Text style={styles.detailValue}>{formatMoney(service.fees, currency)}</Text>
+                  {hasMultipleFees && (
+                    <Ionicons
+                      name={feesExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={colors.textSecondary}
+                    />
+                  )}
+                </Pressable>
+
+                {hasMultipleFees && feesExpanded && (
+                  <View style={[styles.feesDropdown, { borderColor: colors.borderLight, backgroundColor: colors.surface }]}>
+                    {feesBreakdown.map((fee, idx) => (
+                      <View
+                        key={`${fee.description ?? 'fee'}-${idx}`}
+                        style={[
+                          styles.feeRow,
+                          idx !== feesBreakdown.length - 1 && { borderBottomColor: colors.borderLight, borderBottomWidth: StyleSheet.hairlineWidth },
+                        ]}
+                      >
+                        <Text style={[styles.feeDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                          {getFeeDisplayDescription(fee.description, i18n.language) || t('services.fees')}
+                        </Text>
+                        <Text style={[styles.feeAmount, { color: colors.text }]}> {formatMoney(fee.amount, 'JOD')} </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             </View>
           </View>

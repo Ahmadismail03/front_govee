@@ -48,6 +48,8 @@ const services: Service[] = [
       'mock.services.svc_renew_id.documents.proofOfAddress',
     ],
     fees: 25,
+    currency: 'JOD',
+    feesUnknown: false,
     isEnabled: true,
   },
   {
@@ -62,6 +64,8 @@ const services: Service[] = [
       'mock.services.svc_passport_renew.documents.nationalId',
     ],
     fees: 60,
+    currency: 'JOD',
+    feesUnknown: false,
     isEnabled: true,
   },
   {
@@ -75,6 +79,8 @@ const services: Service[] = [
       'mock.services.svc_birth_cert.documents.familyBook',
     ],
     fees: 10,
+    currency: 'JOD',
+    feesUnknown: false,
     isEnabled: true,
   },
   {
@@ -88,6 +94,8 @@ const services: Service[] = [
       'mock.services.svc_vehicle_reg.documents.insurance',
     ],
     fees: 50,
+    currency: 'JOD',
+    feesUnknown: false,
     isEnabled: true,
   },
   {
@@ -101,6 +109,8 @@ const services: Service[] = [
       'mock.services.svc_driver_license_renew.documents.medical',
     ],
     fees: 35,
+    currency: 'JOD',
+    feesUnknown: false,
     isEnabled: true,
   },
   {
@@ -115,6 +125,8 @@ const services: Service[] = [
       'mock.services.svc_parking_permit.documents.proofOfResidence',
     ],
     fees: 15,
+    currency: 'JOD',
+    feesUnknown: false,
     isEnabled: true,
   },
   {
@@ -125,6 +137,8 @@ const services: Service[] = [
     imageKey: 'promo_digital',
     requiredDocuments: [],
     fees: 0,
+    currency: 'JOD',
+    feesUnknown: false,
     isEnabled: false,
   },
 ];

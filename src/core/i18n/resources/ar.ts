@@ -239,6 +239,7 @@ export const ar = {
     },
     estimatedTime: 'الوقت التقريبي',
     fees: 'الرسوم',
+    feesUnknown: 'غير متوفر',
     processingTime: 'وقت المعالجة',
     minutes: '{{count}} دقيقة',
     bookAppointment: 'حجز موعد',

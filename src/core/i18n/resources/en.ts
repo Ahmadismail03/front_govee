@@ -239,6 +239,7 @@ export const en = {
     },
     estimatedTime: 'Estimated time',
     fees: 'Fees',
+    feesUnknown: 'Not available',
     processingTime: 'Processing Time',
     minutes: '{{count}} min',
     bookAppointment: 'Book Appointment',

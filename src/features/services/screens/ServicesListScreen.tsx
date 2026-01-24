@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useMemo } from 'react';
-import { FlatList, I18nManager, Pressable, StyleSheet, Text, TextInput, View, ImageBackground, ScrollView } from 'react-native';
+﻿import React, { useEffect, useMemo, useRef } from 'react';
+import { FlatList, I18nManager, Pressable, StyleSheet, Text, TextInput, View, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -13,11 +13,12 @@ import { EmptyView } from '../../../shared/ui/EmptyView';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, borderRadius, iconSizes, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { getServiceDisplayName } from '../utils/localization';
 
 type Props = BottomTabScreenProps<TabsParamList, 'ServicesTab'>;
 
 export function ServicesListScreen({ navigation }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
 
@@ -28,17 +29,22 @@ export function ServicesListScreen({ navigation }: Props) {
   const error = useServicesStore((s) => s.error);
   const search = useServicesStore((s) => s.search);
   const category = useServicesStore((s) => s.category);
+  const page = useServicesStore((s) => s.page);
+  const totalPages = useServicesStore((s) => s.totalPages);
   const setSearch = useServicesStore((s) => s.setSearch);
   const setCategory = useServicesStore((s) => s.setCategory);
+  const setPage = useServicesStore((s) => s.setPage);
 
   const [searchDraft, setSearchDraft] = React.useState(search);
 
   // Subscribe to raw state only; derive lists with useMemo to avoid React 19 getSnapshot issues.
   const rawServices = useServicesStore((s) => s.services);
 
+  const listRef = useRef<FlatList<any>>(null);
+
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, page, search]);
 
   useEffect(() => {
     setSearchDraft(search);
@@ -51,12 +57,14 @@ export function ServicesListScreen({ navigation }: Props) {
   const services = useMemo(() => {
     const trimmed = search.trim();
     const bySearch = trimmed
-      ? enabledServices.filter((s) => s.name.toLowerCase().includes(trimmed.toLowerCase()))
+      ? enabledServices.filter((s) =>
+          getServiceDisplayName(s, i18n.language).toLowerCase().includes(trimmed.toLowerCase())
+        )
       : enabledServices;
 
     if (category === 'ALL') return bySearch;
     return bySearch.filter((s) => s.category === category);
-  }, [enabledServices, search, category]);
+  }, [enabledServices, search, category, i18n.language]);
 
   const categories = useMemo(() => {
     const uniq = Array.from(new Set(enabledServices.map((s) => s.category).filter(Boolean))).sort();
@@ -162,12 +170,74 @@ export function ServicesListScreen({ navigation }: Props) {
   if (isLoading) return <LoadingView />;
   if (error) return <ErrorView message={error} onRetry={load} />;
 
+  const visiblePages = getVisiblePages(page, totalPages, 5);
+  const showPagination = totalPages > 1;
+
   return (
     <Screen>
       <FlatList
+        ref={listRef}
         data={services}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={listHeader}
+        ListFooterComponent={
+          showPagination ? (
+            <View style={styles.paginationWrap}>
+              <Pressable
+                onPress={() => {
+                  if (page <= 1) return;
+                  setPage(page - 1);
+                  listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Previous"
+                style={[styles.pageNavButton, page <= 1 && styles.pageNavButtonDisabled]}
+              >
+                <Ionicons
+                  name={I18nManager.isRTL ? 'chevron-forward' : 'chevron-back'}
+                  size={20}
+                  color={page <= 1 ? colors.textTertiary : colors.text}
+                />
+              </Pressable>
+
+              {visiblePages.map((p) => {
+                const selected = p === page;
+                return (
+                  <Pressable
+                    key={p}
+                    onPress={() => {
+                      if (p === page) return;
+                      setPage(p);
+                      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Page ${p}`}
+                    style={[styles.pageButton, selected && styles.pageButtonSelected]}
+                  >
+                    <Text style={[styles.pageText, selected && styles.pageTextSelected]}>{p}</Text>
+                  </Pressable>
+                );
+              })}
+
+              <Pressable
+                onPress={() => {
+                  if (page >= totalPages) return;
+                  setPage(page + 1);
+                  listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Next"
+                style={[styles.pageNavButton, page >= totalPages && styles.pageNavButtonDisabled]}
+              >
+                <Ionicons
+                  name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
+                  size={20}
+                  color={page >= totalPages ? colors.textTertiary : colors.text}
+                />
+              </Pressable>
+            </View>
+          ) : null
+        }
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
@@ -186,6 +256,19 @@ export function ServicesListScreen({ navigation }: Props) {
       />
     </Screen>
   );
+}
+
+function getVisiblePages(current: number, total: number, maxButtons = 5) {
+  if (total <= 1) return [1];
+  const safeMax = Math.max(1, Math.floor(maxButtons));
+  if (total <= safeMax) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const half = Math.floor(safeMax / 2);
+  let start = Math.max(1, current - half);
+  let end = Math.min(total, start + safeMax - 1);
+  start = Math.max(1, end - safeMax + 1);
+
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
 }
 
 function createStyles(colors: ReturnType<typeof useThemeColors>) {
@@ -294,6 +377,50 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
   list: {
     gap: spacing.lg,
     paddingBottom: spacing.xxxl,
+  },
+  paginationWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  pageButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageButtonSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  pageText: {
+    fontSize: typography.base,
+    color: colors.text,
+    fontWeight: typography.semibold,
+  },
+  pageTextSelected: {
+    color: colors.textInverse,
+    fontWeight: typography.bold,
+  },
+  pageNavButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageNavButtonDisabled: {
+    opacity: 0.5,
   },
   });
 }

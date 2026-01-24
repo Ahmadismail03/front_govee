@@ -13,9 +13,11 @@
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
+      "bundleIdentifier": "com.smartgov.app",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.smartgov.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-foreground.png",
         "backgroundColor": "#FFFFFF"
