@@ -27,11 +27,20 @@ export function AuthStartScreen({ navigation, route }: Props) {
     try {
       const nid = nationalId.trim();
       const phone = phoneNumber.replace(/\s+/g, '').trim();
-      if (!nid || !phone) return;
-
-      // Backend validation: nationalId min(5), phoneNumber min(7)
-      if (nid.length < 5 || phone.length < 7) {
+      
+      // Validation
+      if (!nid || !phone) {
         Alert.alert(t('auth.errorTitle'), t('auth.fillRequiredFields'));
+        return;
+      }
+
+      if (nid.length < 9) {
+        Alert.alert(t('auth.errorTitle'), 'رقم الهوية يجب أن يكون 9 أرقام على الأقل');
+        return;
+      }
+
+      if (phone.length < 10) {
+        Alert.alert(t('auth.errorTitle'), 'رقم الهاتف يجب أن يكون 10 أرقام على الأقل');
         return;
       }
 
@@ -61,6 +70,11 @@ export function AuthStartScreen({ navigation, route }: Props) {
       const name = fullName.trim();
       if (!name) {
         Alert.alert(t('auth.errorTitle'), t('auth.fillRequiredFields'));
+        return;
+      }
+
+      if (name.length < 4) {
+        Alert.alert(t('auth.errorTitle'), 'الاسم يجب أن يكون 4 أحرف على الأقل');
         return;
       }
 

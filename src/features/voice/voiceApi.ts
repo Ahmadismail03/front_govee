@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 
-const API_URL = "http://10.0.0.46:4000/voice/stt";
+const API_URL = "http://192.168.117.131:4000/voice/stt";
 
 export type VoiceDecisionResponse = {
   ok: boolean;

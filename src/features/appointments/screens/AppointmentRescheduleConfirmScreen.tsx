@@ -57,7 +57,12 @@ export function AppointmentRescheduleConfirmScreen({ navigation, route }: Props)
         date: route.params.date,
         slotId: route.params.slotId,
       });
-      navigation.replace('AppointmentDetails', { appointmentId: appt.id });
+      Alert.alert('تم التغيير', 'تم تغيير موعدك بنجاح', [
+        {
+          text: 'حسناً',
+          onPress: () => navigation.navigate('MainTabs', { screen: 'AppointmentsTab' })
+        }
+      ]);
     } catch (e: any) {
       Alert.alert(t('common.errorTitle'), e?.message ?? t('common.errorDesc'));
     }

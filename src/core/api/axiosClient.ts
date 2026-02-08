@@ -15,7 +15,7 @@ export function getApiBaseUrl(): string {
   // - Android emulator: http://10.0.2.2:4000
   // - iOS simulator: http://localhost:4000
   // - Physical device: http://<your-lan-ip>:4000
-  return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://10.0.0.46:4000';
+  return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.117.131:4000';
 }
 
 function attachRequestInterceptors(client: AxiosInstance): void {

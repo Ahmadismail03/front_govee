@@ -275,20 +275,20 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   const getAuthStepLabel = () => {
     switch (authStep) {
-      case 'nationalId': return 'Enter your National ID';
-      case 'phoneNumber': return 'Enter your Phone Number';
-      case 'fullName': return 'Enter your Full Name';
-      case 'otp': return 'Enter the verification code';
+      case 'nationalId': return t('auth.enterNationalId');
+      case 'phoneNumber': return t('auth.enterPhoneNumber');
+      case 'fullName': return t('auth.enterFullName');
+      case 'otp': return t('auth.enterVerificationCode');
       default: return '';
     }
   };
 
   const getAuthStepPlaceholder = () => {
     switch (authStep) {
-      case 'nationalId': return 'National ID';
-      case 'phoneNumber': return 'Phone Number';
-      case 'fullName': return 'Full Name';
-      case 'otp': return 'Verification Code';
+      case 'nationalId': return t('auth.nationalId');
+      case 'phoneNumber': return t('auth.phoneNumber');
+      case 'fullName': return t('auth.fullName');
+      case 'otp': return t('auth.otp');
       default: return '';
     }
   };
@@ -364,7 +364,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         <View style={styles.body}>
           {isInAuthFlow && authStep ? (
             <View style={styles.authContainer}>
-              <Text style={styles.authTitle}>Identity Verification</Text>
+              <Text style={styles.authTitle}>{t('auth.identityVerification')}</Text>
               <Text style={styles.authSubtitle}>{getAuthStepLabel()}</Text>
 
               <TextInput
@@ -385,7 +385,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
                 disabled={authLoading || !authStep || !authInputs[authStep].trim()}
               >
                 <Text style={styles.authSubmitText}>
-                  {authLoading ? 'Processing...' : 'Submit'}
+                  {authLoading ? t('common.processing') : t('common.submit')}
                 </Text>
               </TouchableOpacity>
             </View>

@@ -29,12 +29,28 @@ export function AppointmentCancelConfirmScreen({ navigation, route }: Props) {
   if (!appt) return <EmptyView />;
 
   const onConfirm = async () => {
-    try {
-      await cancel(appt.id);
-      navigation.goBack();
-    } catch {
-      Alert.alert(t('common.errorTitle'));
-    }
+    Alert.alert(
+      'تأكيد الإلغاء',
+      'هل أنت متأكد من إلغاء الموعد؟',
+      [
+        {
+          text: 'لا',
+          style: 'cancel'
+        },
+        {
+          text: 'نعم',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await cancel(appt.id);
+              navigation.navigate('MainTabs', { screen: 'AppointmentsTab' });
+            } catch {
+              Alert.alert(t('common.errorTitle'));
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (

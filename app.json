@@ -2,11 +2,12 @@
   "expo": {
     "name": "SmartGov",
     "slug": "smart-gov-app",
+    "scheme": "smartgov",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
@@ -14,7 +15,8 @@
     },
     "ios": {
       "bundleIdentifier": "com.smartgov.app",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "1.0.0"
     },
     "android": {
       "package": "com.smartgov.app",

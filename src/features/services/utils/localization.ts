@@ -31,8 +31,18 @@ function titleCaseFromId(id: string): string {
 
 export function getServiceDisplayName(service: Service, language: string): string {
   const isEn = String(language).toLowerCase().startsWith('en');
-  if (!isEn) return service.name;
-  return FIXED_SERVICE_NAME_EN[service.id] ?? titleCaseFromId(service.id);
+  
+  // Always prefer service.name (which comes from canonicalName)
+  if (service.name && service.name.trim() && !service.name.startsWith('SERVICE_')) {
+    return service.name;
+  }
+  
+  // Fallback to English mapping only if name is missing or looks like an ID
+  if (isEn) {
+    return FIXED_SERVICE_NAME_EN[service.id] ?? titleCaseFromId(service.id);
+  }
+  
+  return service.name || titleCaseFromId(service.id);
 }
 
 export function getServiceDisplayDescription(service: Service, language: string): string {
