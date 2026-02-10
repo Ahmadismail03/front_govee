@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from 'axios';
+import { Platform } from 'react-native';
 import { getSecureItem, peekSecureItem } from '../storage/secureStorage';
 import { StorageKeys } from '../storage/keys';
 import { mockAdapter } from '../../mocks/mockAdapter';
@@ -10,12 +11,22 @@ let realClient: AxiosInstance | null = null;
 let mockClient: AxiosInstance | null = null;
 
 export function getApiBaseUrl(): string {
-  // Expo: define in app env as EXPO_PUBLIC_API_BASE_URL
-  // Examples:
-  // - Android emulator: http://10.0.2.2:4000
-  // - iOS simulator: http://localhost:4000
-  // - Physical device: http://<your-lan-ip>:4000
-  return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.117.131:4000';
+  // Priority 1: Use .env file if set (for physical devices)
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+
+  // Priority 2: Auto-detect for emulators/simulators
+  if (Platform.OS === 'android') {
+    // Android emulator uses special IP to access host machine
+    return 'http://10.0.2.2:4000';
+  } else if (Platform.OS === 'ios') {
+    // iOS simulator can use localhost
+    return 'http://localhost:4000';
+  }
+
+  // Priority 3: Fallback for physical devices (update .env.example)
+  return 'http://192.168.1.2:4000';
 }
 
 function attachRequestInterceptors(client: AxiosInstance): void {
