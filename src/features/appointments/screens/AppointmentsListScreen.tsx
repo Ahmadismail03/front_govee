@@ -148,7 +148,7 @@ function AppointmentRow({
     ? getServiceImageSource({ id: svc.id, category: svc.category, imageKey: svc.imageKey })
     : require('../../../../assets/promo/promo_services.png');
 
-  const timeRange = `${item.startTime}-${item.endTime}`;
+  const timeRange = `${item.startTime}`;
 
   return (
     <Pressable
