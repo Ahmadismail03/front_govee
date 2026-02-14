@@ -18,7 +18,29 @@ type Props = {
   onNavigate?: (screen: string, params?: any) => void;
 };
 
-export async function playTts(base64Audio: string): Promise<void> {
+let currentSound: Audio.Sound | null = null;
+
+export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpiece' = 'earpiece'): Promise<void> {
+  // Stop and unload previous sound if exists
+  if (currentSound) {
+    try {
+      await currentSound.stopAsync();
+      await currentSound.unloadAsync();
+    } catch (err) {
+      console.warn('Failed to stop previous sound:', err);
+    }
+    currentSound = null;
+  }
+
+  // Configure audio mode based on voiceMode
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: voiceMode === 'earpiece',
+  });
+
   const uri = FileSystem.cacheDirectory + "tts.mp3";
 
   await FileSystem.writeAsStringAsync(uri, base64Audio, {
@@ -26,6 +48,8 @@ export async function playTts(base64Audio: string): Promise<void> {
   });
 
   const { sound } = await Audio.Sound.createAsync({ uri });
+  currentSound = sound;
+  
   await sound.playAsync();
 
   // Wait for playback to complete
@@ -33,6 +57,7 @@ export async function playTts(base64Audio: string): Promise<void> {
     sound.setOnPlaybackStatusUpdate((status) => {
       if (status.isLoaded && status.didJustFinish) {
         sound.unloadAsync().catch(console.warn);
+        currentSound = null;
         resolve();
       }
     });
@@ -305,7 +330,9 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   const processAudio = async (uri: string) => {
     try {
-      const currentSessionId = useVoiceStore.getState().sessionId;
+      const voiceState = useVoiceStore.getState();
+      const currentSessionId = voiceState.sessionId;
+      const currentVoiceMode = voiceState.voiceMode;
 
       if (!currentSessionId) {
         console.warn("🎤 No sessionId, cannot send voice");
@@ -332,14 +359,44 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         setRecordingState("idle");
         return;
       }
+      
       if (decision.audioBase64) {
         setRecordingState("playing");
-        await playTts(decision.audioBase64);
+        await playTts(decision.audioBase64, currentVoiceMode);
         useVoiceStore.getState().setShouldResumeListening(true);
+      } else {
+        setRecordingState("idle");
       }
     } catch (err) {
       console.error("❌ Error processing audio:", err);
       setRecordingState("error");
+    }
+  };
+
+  const voiceMode = useVoiceStore((s) => s.voiceMode);
+  const setVoiceMode = useVoiceStore((s) => s.setVoiceMode);
+
+  const toggleVoiceMode = async () => {
+    const sessionId = useVoiceStore.getState().sessionId;
+    if (!sessionId) {
+      console.warn("No sessionId available for voice mode update");
+      return;
+    }
+
+    const newMode = voiceMode === 'earpiece' ? 'speaker' : 'earpiece';
+    
+    // Update UI immediately
+    setVoiceMode(newMode);
+    
+    // Update backend
+    try {
+      const { updateVoiceMode } = await import('../voiceApi');
+      await updateVoiceMode(sessionId, newMode);
+      console.log(`✅ Voice mode updated to ${newMode}`);
+    } catch (err) {
+      console.error("❌ Failed to update voice mode on backend:", err);
+      // Revert on failure
+      setVoiceMode(voiceMode);
     }
   };
 
@@ -352,6 +409,13 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
             <Text style={styles.headerTitle}>{t('voice.title')}</Text>
           </View>
           <View style={styles.headerRight}>
+            <TouchableOpacity onPress={toggleVoiceMode} style={styles.headerIconBtn} accessibilityRole="button">
+              <Ionicons 
+                name={voiceMode === 'speaker' ? 'volume-high' : 'ear'} 
+                size={iconSizes.md} 
+                color={colors.headerText} 
+              />
+            </TouchableOpacity>
             <TouchableOpacity onPress={clear} style={styles.headerIconBtn} accessibilityRole="button">
               <Ionicons name="trash-outline" size={iconSizes.md} color={colors.headerText} />
             </TouchableOpacity>

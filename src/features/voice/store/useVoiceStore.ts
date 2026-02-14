@@ -18,10 +18,12 @@ type PendingAuthData = {
 type VoiceState = {
   isOpen: boolean;
   sessionId: string | null;
+  voiceMode: 'speaker' | 'earpiece';
   messages: VoiceMessage[];
   recordingState: VoiceRecordingState;
   error: string | null;
   setSessionId: (sessionId: string | null) => void;
+  setVoiceMode: (mode: 'speaker' | 'earpiece') => void;
 
   authTriggeredByVoice: boolean;
   pendingAuthData: PendingAuthData | null;
@@ -75,6 +77,7 @@ function pickAuthValue(
 export const useVoiceStore = create<VoiceState>((set, get) => ({
   isOpen: false,
   sessionId: null,
+  voiceMode: 'earpiece',
   messages: [],
   recordingState: 'idle',
   error: null,
@@ -83,6 +86,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   setShouldResumeListening: (v) =>
     set({ shouldResumeListening: v }),
   setSessionId: (sessionId) => set({ sessionId }),
+  setVoiceMode: (mode) => set({ voiceMode: mode }),
 
   authTriggeredByVoice: false,
   pendingAuthData: null,
@@ -93,6 +97,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   clear: () =>
     set({
       sessionId: null,
+      voiceMode: 'earpiece',
       messages: [],
       recordingState: 'idle',
       error: null,
