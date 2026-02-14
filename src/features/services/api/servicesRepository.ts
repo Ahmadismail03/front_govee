@@ -8,6 +8,8 @@ type BackendServiceListItem = {
   canonicalName: string;
   description?: string | null;
   isActive: boolean;
+  category?: string | null;
+  categoryKey?: string | null;
   // NOTE: Some backend versions may include this on the list response.
   price?: string | number | null;
   currency?: string | null;
@@ -67,7 +69,8 @@ function mapBackendServiceToDomain(svc: BackendServiceDetails): Service {
   return {
     id: svc.id,
     name: svc.canonicalName,
-    category: '',
+    category: svc.category ?? '',
+    categoryKey: svc.categoryKey ?? '',
     description: svc.description ?? '',
     requiredDocuments,
     feesBreakdown,

@@ -83,6 +83,21 @@ export function ServiceCard({ service, onPress }: Props) {
           padding: spacing.lg,
           gap: spacing.md,
         },
+        categoryBadge: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.xs,
+          alignSelf: 'flex-start',
+          backgroundColor: colors.primaryLight,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.xs,
+          borderRadius: borderRadius.full,
+        },
+        categoryText: {
+          fontSize: typography.xs,
+          fontWeight: typography.semibold,
+          color: colors.primary,
+        },
         titleRow: {
           flexDirection: 'row',
           alignItems: 'flex-start',
@@ -225,6 +240,14 @@ export function ServiceCard({ service, onPress }: Props) {
       </View>
       
       <View style={styles.content}>
+        {/* Category Badge */}
+        {service.category && (
+          <View style={styles.categoryBadge}>
+            <Ionicons name="folder-outline" size={14} color={colors.primary} />
+            <Text style={styles.categoryText}>{service.category}</Text>
+          </View>
+        )}
+        
         {/* Service Title */}
         <View style={styles.titleRow}>
           <Text style={styles.name} numberOfLines={2}>

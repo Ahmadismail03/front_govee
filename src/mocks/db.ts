@@ -40,7 +40,8 @@ const services: Service[] = [
   {
     id: 'svc_renew_id',
     name: 'mock.services.svc_renew_id.name',
-    category: 'IDENTITY',
+    category: 'الهوية',
+    categoryKey: 'IDENTITY',
     description: 'mock.services.svc_renew_id.description',
     imageKey: 'promo_citizen',
     requiredDocuments: [
@@ -55,7 +56,8 @@ const services: Service[] = [
   {
     id: 'svc_passport_renew',
     name: 'mock.services.svc_passport_renew.name',
-    category: 'IDENTITY',
+    category: 'الهوية',
+    categoryKey: 'IDENTITY',
     description: 'mock.services.svc_passport_renew.description',
     imageKey: 'promo_citizen',
     requiredDocuments: [
@@ -71,7 +73,8 @@ const services: Service[] = [
   {
     id: 'svc_birth_cert',
     name: 'mock.services.svc_birth_cert.name',
-    category: 'IDENTITY',
+    category: 'الهوية',
+    categoryKey: 'IDENTITY',
     description: 'mock.services.svc_birth_cert.description',
     imageKey: 'promo_citizen',
     requiredDocuments: [
@@ -86,7 +89,8 @@ const services: Service[] = [
   {
     id: 'svc_vehicle_reg',
     name: 'mock.services.svc_vehicle_reg.name',
-    category: 'TRANSPORT',
+    category: 'النقل',
+    categoryKey: 'TRANSPORT',
     description: 'mock.services.svc_vehicle_reg.description',
     imageKey: 'promo_services',
     requiredDocuments: [
@@ -101,7 +105,8 @@ const services: Service[] = [
   {
     id: 'svc_driver_license_renew',
     name: 'mock.services.svc_driver_license_renew.name',
-    category: 'TRANSPORT',
+    category: 'النقل',
+    categoryKey: 'TRANSPORT',
     description: 'mock.services.svc_driver_license_renew.description',
     imageKey: 'promo_services',
     requiredDocuments: [
@@ -116,7 +121,8 @@ const services: Service[] = [
   {
     id: 'svc_parking_permit',
     name: 'mock.services.svc_parking_permit.name',
-    category: 'PERMITS',
+    category: 'التصاريح',
+    categoryKey: 'PERMITS',
     description: 'mock.services.svc_parking_permit.description',
     imageKey: 'promo_digital',
     requiredDocuments: [
@@ -132,7 +138,8 @@ const services: Service[] = [
   {
     id: 'svc_disabled_example',
     name: 'mock.services.svc_disabled_example.name',
-    category: 'PERMITS',
+    category: 'التصاريح',
+    categoryKey: 'PERMITS',
     description: 'mock.services.svc_disabled_example.description',
     imageKey: 'promo_digital',
     requiredDocuments: [],

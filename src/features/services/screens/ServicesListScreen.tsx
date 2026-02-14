@@ -63,26 +63,29 @@ export function ServicesListScreen({ navigation }: Props) {
       : enabledServices;
 
     if (category === 'ALL') return bySearch;
-    return bySearch.filter((s) => s.category === category);
+    return bySearch.filter((s) => s.categoryKey === category);
   }, [enabledServices, search, category, i18n.language]);
 
   const categories = useMemo(() => {
-    const uniq = Array.from(new Set(enabledServices.map((s) => s.category).filter(Boolean))).sort();
+    const uniq = Array.from(new Set(enabledServices.map((s) => s.categoryKey).filter(Boolean))).sort();
     return ['ALL', ...uniq];
+  }, [enabledServices]);
+
+  // Build a map from categoryKey to Arabic category name
+  const categoryMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    enabledServices.forEach((s) => {
+      if (s.categoryKey && s.category) {
+        map[s.categoryKey] = s.category;
+      }
+    });
+    return map;
   }, [enabledServices]);
 
   const categoryLabel = (c: string) => {
     if (c === 'ALL') return t('services.categoryAll');
-    switch (c) {
-      case 'IDENTITY':
-        return t('services.categories.identity');
-      case 'TRANSPORT':
-        return t('services.categories.transport');
-      case 'PERMITS':
-        return t('services.categories.permits');
-      default:
-        return c;
-    }
+    // Use the Arabic category name from the data
+    return categoryMap[c] ?? c;
   };
 
   const listHeader = useMemo(
