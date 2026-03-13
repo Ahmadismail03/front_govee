@@ -7,16 +7,21 @@ let monitoringInterval: NodeJS.Timeout | undefined = undefined;
 let onSilenceDetected: ((uri: string) => void) | null = null;
 let recordingStartTime: number | null = null;
 
+// Cache mic permission + audio mode so we only pay the setup cost once.
+let micPermissionGranted = false;
+let recordingModeSet = false;
+
 // Voice Activity Detection configuration
-const SPEECH_THRESHOLD = -35
-const SILENCE_THRESHOLD = -38
-const SILENCE_DURATION = 1000
+const SPEECH_THRESHOLD = -35;
+const SILENCE_THRESHOLD = -38;
+// 600ms feels responsive while avoiding false triggers on breath pauses.
+const SILENCE_DURATION = 600;
+// 200ms minimum before confirming speech has started.
+const SPEECH_DURATION = 200;
 
-const SPEECH_DURATION = 300; // ms - minimum speech duration to start recording
-
-const MIN_RECORDING_DURATION = 1000; // ms - minimum recording time
-const MAX_RECORDING_DURATION = 6000;  
-const MONITORING_INTERVAL = 100; // ms - how often to check audio levels
+const MIN_RECORDING_DURATION = 1000; // ms
+const MAX_RECORDING_DURATION = 6000; // ms
+const MONITORING_INTERVAL = 100;    // ms
 
 export async function startRecording(onSilenceCallback?: (uri: string) => void) {
   // Ensure any existing recording is properly cleaned up
@@ -31,12 +36,20 @@ export async function startRecording(onSilenceCallback?: (uri: string) => void) 
 
   onSilenceDetected = onSilenceCallback || null;
 
-  await Audio.requestPermissionsAsync();
+  // Only request permission once; subsequent calls skip this ~50ms round trip.
+  if (!micPermissionGranted) {
+    const { status } = await Audio.requestPermissionsAsync();
+    micPermissionGranted = status === "granted";
+  }
 
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
-  });
+  // Set recording audio mode only once; switching modes costs ~50–150ms on Android.
+  if (!recordingModeSet) {
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+    });
+    recordingModeSet = true;
+  }
 
   recording = new Audio.Recording();
   await recording.prepareToRecordAsync(recordingOptions);
@@ -45,7 +58,6 @@ export async function startRecording(onSilenceCallback?: (uri: string) => void) 
 
   console.log("🎙️ Recording started");
 
-  // Start monitoring for silence
   startSilenceMonitoring();
 }
 
@@ -56,7 +68,7 @@ export async function stopRecording(): Promise<string | null> {
     return null;
   }
 
-  // Clear timers
+  // Clear timers immediately so no pending tick can interfere.
   if (silenceTimer) {
     clearTimeout(silenceTimer);
     silenceTimer = undefined;
@@ -66,12 +78,16 @@ export async function stopRecording(): Promise<string | null> {
     monitoringInterval = undefined;
   }
 
+  // Allow the recording audio mode to be re-applied on the next startRecording
+  // so that playTts can switch to playback mode without conflict.
+  recordingModeSet = false;
+
   await recording.stopAndUnloadAsync();
   const uri = recording.getURI();
   recording = null;
   recordingStartTime = null;
 
-  console.log("📂 WAV saved:", uri);
+  console.log("📂 Audio saved:", uri);
   return uri;
 }
 
@@ -85,7 +101,15 @@ function startSilenceMonitoring() {
   const MAX_RECENT_LEVELS = 10;
   let meteringUnavailableStart: number | null = null;
 
+  // Guard flag: once we decide to stop, prevent any subsequent interval tick
+  // from firing onSilenceDetected a second time (async race fix).
+  let isStopping = false;
+
   monitoringInterval = setInterval(async () => {
+    // If we already initiated a stop, do nothing — the interval will be
+    // cleared by stopRecording() before the next tick reaches here.
+    if (isStopping) return;
+
     if (!recording || !recordingStartTime) {
       console.log("🧹 Clearing VAD monitoring (no recording)");
       clearInterval(monitoringInterval);
@@ -100,6 +124,9 @@ function startSilenceMonitoring() {
       // Safety: stop after maximum duration
       if (elapsed >= MAX_RECORDING_DURATION) {
         console.log("⏰ Safety stop after maximum duration");
+        isStopping = true;
+        clearInterval(monitoringInterval);
+        monitoringInterval = undefined;
         const uri = await stopRecording();
         if (onSilenceDetected && uri) {
           onSilenceDetected(uri);
@@ -110,17 +137,18 @@ function startSilenceMonitoring() {
       if (status.isRecording) {
         let currentLevel = status.metering;
 
-        // If metering is not available, use a fallback approach
+        // Fallback if metering is unavailable
         if (currentLevel === undefined) {
           if (meteringUnavailableStart === null) {
             meteringUnavailableStart = Date.now();
             console.log("⚠️ Audio metering not available, using fallback mode");
           }
-
-          // In fallback mode, record for a reasonable time then stop
           const meteringUnavailableElapsed = Date.now() - meteringUnavailableStart;
-          if (meteringUnavailableElapsed >= 5000) { // 5 seconds fallback
-            console.log("⏰ Fallback stop (no metering available after 5 seconds)");
+          if (meteringUnavailableElapsed >= 5000) {
+            console.log("⏰ Fallback stop (no metering available after 5s)");
+            isStopping = true;
+            clearInterval(monitoringInterval);
+            monitoringInterval = undefined;
             const uri = await stopRecording();
             if (onSilenceDetected && uri) {
               onSilenceDetected(uri);
@@ -129,63 +157,66 @@ function startSilenceMonitoring() {
           return;
         }
 
-        // Reset metering unavailable flag if we got a reading
         meteringUnavailableStart = null;
 
-        // Update recent levels for smoothing
+        // Smoothed level over last N readings
         recentLevels.push(currentLevel);
         if (recentLevels.length > MAX_RECENT_LEVELS) {
           recentLevels.shift();
         }
-
-        // Calculate average level for stability
-        const avgLevel = recentLevels.reduce((sum, level) => sum + level, 0) / recentLevels.length;
+        const avgLevel =
+          recentLevels.reduce((sum, l) => sum + l, 0) / recentLevels.length;
 
         if (!isRecordingActive) {
-          // Waiting for speech to start
+          // Waiting for speech to begin
           if (avgLevel > SPEECH_THRESHOLD) {
             if (speechStartTime === null) {
               speechStartTime = Date.now();
               console.log(`🎤 Detected potential speech: ${avgLevel.toFixed(1)}dB`);
             } else if (Date.now() - speechStartTime >= SPEECH_DURATION) {
-              // Speech has been detected for minimum duration
               isRecordingActive = true;
               speechStartTime = null;
               silenceStartTime = null;
               console.log(`🎙️ Speech confirmed, recording is now active`);
             }
           } else {
-            // Reset speech detection if level drops
             if (speechStartTime !== null) {
               console.log(`🔇 Speech detection reset: ${avgLevel.toFixed(1)}dB`);
               speechStartTime = null;
             }
           }
         } else {
-          // Recording is active, monitor for silence
+          // Speech was detected — now watching for silence
           if (avgLevel < SILENCE_THRESHOLD) {
-            // Audio level is below silence threshold
             if (silenceStartTime === null) {
               silenceStartTime = Date.now();
-              console.log(`🔇 Silence detected: ${avgLevel.toFixed(1)}dB (threshold: ${SILENCE_THRESHOLD}dB)`);
+              console.log(
+                `🔇 Silence detected: ${avgLevel.toFixed(1)}dB (threshold: ${SILENCE_THRESHOLD}dB)`
+              );
             } else if (Date.now() - silenceStartTime >= SILENCE_DURATION) {
-              // Silence has persisted long enough
               if (elapsed >= MIN_RECORDING_DURATION) {
-                console.log(`🔇 Silence confirmed, stopping recording after ${elapsed}ms`);
+                console.log(
+                  `🔇 Silence confirmed, stopping recording after ${elapsed}ms`
+                );
+                // Set guard BEFORE clearing interval and stopping, so any
+                // concurrent async tick that resumes after the await sees it.
+                isStopping = true;
+                clearInterval(monitoringInterval);
+                monitoringInterval = undefined;
                 const uri = await stopRecording();
                 if (onSilenceDetected && uri) {
                   onSilenceDetected(uri);
                 }
               } else {
-                // Recording too short, keep going
                 console.log(`⏳ Recording too short (${elapsed}ms), continuing...`);
                 silenceStartTime = null;
               }
             }
           } else {
-            // Speech detected, reset silence timer
             if (silenceStartTime !== null) {
-              console.log(`🎤 Speech resumed: ${avgLevel.toFixed(1)}dB, resetting silence timer`);
+              console.log(
+                `🎤 Speech resumed: ${avgLevel.toFixed(1)}dB, resetting silence timer`
+              );
               silenceStartTime = null;
             }
           }

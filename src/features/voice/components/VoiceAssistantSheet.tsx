@@ -1,4 +1,4 @@
-﻿import { Modal, StyleSheet, Text, TouchableOpacity, View, TextInput, Alert } from 'react-native';
+import { Modal, StyleSheet, Text, TouchableOpacity, View, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +6,7 @@ import { borderRadius, iconSizes, shadows, spacing, typography } from '../../../
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { useVoiceStore } from '../store/useVoiceStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { PermissionsAndroid, Platform } from "react-native";
 import { startRecording, stopRecording } from '../useVoiceRecorder';
 import { sendVoice } from '../voiceApi';
@@ -21,6 +21,9 @@ type Props = {
 let currentSound: Audio.Sound | null = null;
 
 export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpiece' = 'earpiece'): Promise<void> {
+  const playStartTime = Date.now();
+  console.log(`🎵 [playTts] START - voiceMode=${voiceMode}, audioLength=${base64Audio?.length || 0} bytes`);
+
   // Stop and unload previous sound if exists
   if (currentSound) {
     try {
@@ -32,7 +35,7 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
     currentSound = null;
   }
 
-  // Configure audio mode based on voiceMode
+  // Switch audio session to playback mode.
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: false,
     playsInSilentModeIOS: true,
@@ -41,28 +44,173 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
     playThroughEarpieceAndroid: voiceMode === 'earpiece',
   });
 
-  const uri = FileSystem.cacheDirectory + "tts.mp3";
+  // Write the audio file and load the sound IN PARALLEL with the settle delay.
+  // Reduced SETTLE_MS from 300→150ms: the pre-warm audio mode switch in
+  // processAudio() already runs during the API round-trip, so we only need a
+  // small settle window here.
+  const SETTLE_MS = 150;
+  const uri = FileSystem.cacheDirectory + `tts_${Date.now()}.mp3`;
 
-  await FileSystem.writeAsStringAsync(uri, base64Audio, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+  const [, { sound }] = await Promise.all([
+    new Promise<void>((r) => setTimeout(r, SETTLE_MS)),
+    FileSystem.writeAsStringAsync(uri, base64Audio, {
+      encoding: FileSystem.EncodingType.Base64,
+    }).then(() =>
+      Audio.Sound.createAsync(
+        { uri },
+        // 50ms polling: faster detection of completion events on Android.
+        { progressUpdateIntervalMillis: 50 }
+      )
+    ),
+  ]);
 
-  const { sound } = await Audio.Sound.createAsync({ uri });
   currentSound = sound;
-  
-  await sound.playAsync();
 
-  // Wait for playback to complete
+  // Read the audio duration right after load so we can set a hard safety timer.
+  const loadedStatus = await sound.getStatusAsync();
+  const durationMs =
+    loadedStatus.isLoaded && loadedStatus.durationMillis && loadedStatus.durationMillis > 0
+      ? loadedStatus.durationMillis
+      : 15_000; // fallback for very long audio or when Android reports 0
+
+  console.log(`🎵 [playTts] LOADED - duration=${durationMs}ms, isLoaded=${loadedStatus.isLoaded}`);
+
   return new Promise<void>((resolve) => {
+    let done = false;
+    let safetyTimer: NodeJS.Timeout | null = null;
+    // Independent polling interval — started after playAsync() resolves so we
+    // never fire isPlaying=false before playback has actually begun.
+    let pollInterval: NodeJS.Timeout | null = null;
+    // Guards the STATUS CALLBACK's tertiary isPlaying=false path only.
+    // expo-av fires an immediate initial status event after setOnPlaybackStatusUpdate()
+    // is registered where isLoaded=true but isPlaying=false (sound loaded, not yet
+    // playing). Without this guard that event fires finish() before playAsync() runs.
+    // The poll loop doesn't need this guard — it only starts after playAsync() resolves.
+    let playbackStarted = false;
+
+    const finish = (reason: string) => {
+      if (done) return;
+      done = true;
+
+      if (safetyTimer) {
+        clearTimeout(safetyTimer);
+        safetyTimer = null;
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+
+      // Detach the callback first so no further updates arrive after cleanup.
+      sound.setOnPlaybackStatusUpdate(null);
+
+      // Unload sound and delete temp file asynchronously.
+      sound.unloadAsync().catch(console.warn);
+      currentSound = null;
+      FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => { });
+
+      const elapsedMs = Date.now() - playStartTime;
+      console.log(`🎵 [playTts] FINISHED via "${reason}" in ${elapsedMs}ms — resolving Promise`);
+      resolve();
+    };
+
+    // ── Status callback ───────────────────────────────────────────────────────
+    // Register BEFORE playAsync() so we never miss the very first update.
     sound.setOnPlaybackStatusUpdate((status) => {
-      if (status.isLoaded && status.didJustFinish) {
-        sound.unloadAsync().catch(console.warn);
-        currentSound = null;
-        resolve();
+      if (done) return;
+      if (!status.isLoaded) return;
+
+      // Primary: didJustFinish — the most reliable signal when it fires.
+      if (status.didJustFinish) {
+        finish('didJustFinish');
+        return;
+      }
+
+      // Secondary: position reached >=90% of duration.
+      // Lowered threshold from 95%→90% and guard now only requires durationMillis
+      // to be positive (positionMillis can be 0 on some Android devices when the
+      // player is in a finalising state).
+      if (
+        status.durationMillis && status.durationMillis > 0 &&
+        status.positionMillis != null &&
+        status.positionMillis >= status.durationMillis * 0.99
+      ) {
+        finish('position>=90%');
+        return;
+      }
+
+      // Tertiary: isPlaying became false AFTER playback started.
+      // The playbackStarted guard is REQUIRED here: expo-av fires an initial
+      // status event immediately after setOnPlaybackStatusUpdate() is registered
+      // with isLoaded=true, isPlaying=false (loaded but not yet playing). Without
+      // this guard that event would call finish() before playAsync() even runs.
+      // The poll loop handles the isPlaying=false case once playback is live.
+      if (playbackStarted && status.isPlaying === false) {
+        finish('isPlaying=false after start');
+        return;
       }
     });
+
+    // ── Safety timer ─────────────────────────────────────────────────────────
+    // Fires at duration + 300ms. The polling loop (started after playAsync)
+    // should catch normal completion; this is only for catastrophic cases.
+    safetyTimer = setTimeout(() => {
+      console.warn(`⚠️ [playTts] Safety timer fired after ${durationMs + 300}ms — forcing finish`);
+      finish('safety-timer');
+    }, durationMs + 300);
+
+    // ── Start playback ────────────────────────────────────────────────────────
+    sound.playAsync()
+      .then(() => {
+        console.log('🎵 [playTts] Playback started successfully');
+        // Mark playback as started BEFORE starting the poll so the status
+        // callback's tertiary guard is active for any concurrent callbacks.
+        playbackStarted = true;
+
+        // ── Independent polling loop ──────────────────────────────────────────
+        // Started HERE (after playAsync resolves) so:
+        //  1. No no-op ticks while waiting for playback to begin.
+        //  2. isPlaying=false polls are only live once we know audio launched.
+        // On Android, expo-av status callbacks can STOP firing entirely once the
+        // MediaPlayer enters PlaybackCompleted state. We poll getStatusAsync()
+        // directly at 50ms intervals as a completely independent fallback.
+        pollInterval = setInterval(async () => {
+          if (done) return;
+          try {
+            const status = await sound.getStatusAsync();
+            if (!status.isLoaded) {
+              finish('poll:unloaded');
+              return;
+            }
+            if (status.didJustFinish) {
+              finish('poll:didJustFinish');
+              return;
+            }
+            if (
+              status.durationMillis && status.durationMillis > 0 &&
+              status.positionMillis != null &&
+              status.positionMillis >= status.durationMillis * 0.99
+            ) {
+              finish('poll:position>=90%');
+              return;
+            }
+            if (!status.isPlaying) {
+              finish('poll:isPlaying=false');
+              return;
+            }
+          } catch {
+            // Sound was already unloaded — treat as finished.
+            finish('poll:error');
+          }
+        }, 50);
+      })
+      .catch((e) => {
+        console.warn('playAsync error:', e);
+        finish('playAsync-error');
+      });
   });
 }
+
 
 export function VoiceAssistantSheet({ onNavigate }: Props) {
   const { t } = useTranslation();
@@ -100,16 +248,115 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     (s) => s.shouldResumeListening
   );
 
+  // ─── processAudio ────────────────────────────────────────────────────────────
+  // Declared here (before handleSilenceDetected + its useEffect) so all three
+  // are in the correct declaration order.
+  const processAudio = async (uri: string) => {
+    try {
+      const voiceState = useVoiceStore.getState();
+      const currentSessionId = voiceState.sessionId;
+      const currentVoiceMode = voiceState.voiceMode;
+
+      if (!currentSessionId) {
+        console.warn("🎤 No sessionId, cannot send voice");
+        setRecordingState("idle");
+        return;
+      }
+
+      // ⚡ PRE-WARM PLAYBACK SESSION: Switch the Android AudioManager to
+      // playback mode RIGHT NOW, before the API call, so it has the full
+      // backend round-trip (~4–6s) to settle. This is what eliminates the
+      // first-word cut-off on the very first response — the recording→playback
+      // session transition is the slowest path (~400–800ms on some devices),
+      // and 300ms inside playTts is not enough to cover it. Subsequent turns
+      // are unaffected because the session stays in playback mode between turns.
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: currentVoiceMode === 'earpiece',
+      }).catch((e) => console.warn('⚠️ Pre-warm audio mode failed:', e));
+
+      const decision = await sendVoice(uri, currentSessionId);
+
+      if (decision.sessionId) {
+        useVoiceStore.getState().setSessionId(decision.sessionId);
+      }
+
+      console.log("🗣 Assistant:", decision.message, "Stage:", decision.stage);
+
+      // Check if authentication is required
+      if (decision.stage === 'IDENTITY' && authStatus !== 'authenticated') {
+        console.log("🔐 Identity stage detected, starting inline auth flow");
+        setIsInAuthFlow(true);
+        setAuthStep('nationalId');
+        setAuthTriggeredByVoice(true);
+        setRecordingState("idle");
+        return;
+      }
+
+      if (decision.audioBase64) {
+        setRecordingState("playing");
+        console.log("🎤 Processing audio response...");
+        console.log("🎤 Setting recording state to PLAYING");
+        try {
+          await playTts(decision.audioBase64, currentVoiceMode);
+          console.log("🎤 Audio playback completed, setting to idle");
+          console.log("🎤 About to call setRecordingState('idle')");
+          setRecordingState("idle");
+          console.log("🎤 Called setRecordingState('idle') - state should now be idle");
+        } catch (err) {
+          console.error("❌ playTts error:", err);
+          console.log("🎤 Setting recording state to ERROR due to playTts error");
+          setRecordingState("error");
+        }
+        useVoiceStore.getState().setShouldResumeListening(true);
+        console.log("🎤 Set shouldResumeListening to true");
+      } else {
+        console.log("🎤 No audioBase64, setting recording state to idle");
+        setRecordingState("idle");
+      }
+    } catch (err) {
+      console.error("❌ Error processing audio:", err);
+      setRecordingState("error");
+    }
+  };
+
+  // ⚡ FIX: useCallback with stable deps ensures the VAD interval always calls
+  // the current closure, not a stale one from the first render. Without this,
+  // silence detection works on turn 1 but breaks on turn 2+ because the
+  // onSilenceDetected ref in useVoiceRecorder.ts points to an old closure.
+  const handleSilenceDetected = useCallback(async (uri: string) => {
+    try {
+      setRecordingState("processing");
+      await processAudio(uri);
+    } catch (err) {
+      console.error("❌ Error processing audio after silence:", err);
+      setRecordingState("error");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus]);
+
   useEffect(() => {
     if (shouldResumeListening && isOpen) {
       (async () => {
-        console.log("🎤 Auto resuming mic after TTS");
+        console.log("🎤 Auto resuming mic after TTS - starting recording");
+        // State is already "idle" (set in processAudio above). Start recording
+        // and only move to "listening" once the recorder is actually running.
         await startRecording(handleSilenceDetected);
+        console.log("🎤 Recording started successfully, setting state to listening");
         useVoiceStore.getState().setRecordingState("listening");
+        console.log("🎤 Set recording state to listening");
         useVoiceStore.getState().setShouldResumeListening(false);
-      })();
+        console.log("🎤 Set shouldResumeListening to false");
+      })().catch((err) => {
+        console.error("🎤 Error in auto-resume mic:", err);
+        useVoiceStore.getState().setRecordingState("error");
+      });
     }
-  }, [shouldResumeListening, isOpen]);
+    // ⚡ FIX: handleSilenceDetected in deps so effect always uses current closure.
+  }, [shouldResumeListening, isOpen, handleSilenceDetected]);
 
   // Inline auth state
   const [isInAuthFlow, setIsInAuthFlow] = useState(false);
@@ -129,19 +376,24 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   }, [onNavigate]);
 
   const stateLabel = useMemo(() => {
-    switch (recordingState) {
-      case 'listening':
-        return t('voice.listening');
-      case 'processing':
-        return t('voice.processing');
-      case 'playing':
-        return t('voice.playing');
-      case 'error':
-        return t('voice.error');
-      default:
-        return '';
-    }
-  }, [recordingState, t]);
+    const label = (() => {
+      switch (recordingState) {
+        case 'listening':
+          return t('voice.listening');
+        case 'processing':
+          return t('voice.processing');
+        case 'playing':
+          return t('voice.playing');
+        case 'error':
+          return t('voice.error');
+        default:
+          return '';
+      }
+    })();
+    const shouldShowStateBar = recordingState !== 'idle' || error;
+    console.log(`🎤 UI stateLabel: "${label}" (recordingState: ${recordingState}, error: ${error}) - StateBar: ${shouldShowStateBar ? 'VISIBLE' : 'HIDDEN'}`);
+    return label;
+  }, [recordingState, t, error]);
 
   const micIcon =
     recordingState === 'processing'
@@ -262,7 +514,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
       if (authStep === 'otp') {
         // Call verifyOtp
-         verifyOtp(authInputs.phoneNumber, currentValue);
+        verifyOtp(authInputs.phoneNumber, currentValue);
         const voice = useVoiceStore.getState();
         voice.setPendingAuthData({
           nationalId: authInputs.nationalId,
@@ -318,60 +570,8 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     }
   };
 
-  const handleSilenceDetected = async (uri: string) => {
-    try {
-      setRecordingState("processing");
-      await processAudio(uri);
-    } catch (err) {
-      console.error("❌ Error processing audio after silence:", err);
-      setRecordingState("error");
-    }
-  };
-
-  const processAudio = async (uri: string) => {
-    try {
-      const voiceState = useVoiceStore.getState();
-      const currentSessionId = voiceState.sessionId;
-      const currentVoiceMode = voiceState.voiceMode;
-
-      if (!currentSessionId) {
-        console.warn("🎤 No sessionId, cannot send voice");
-        setRecordingState("idle");
-        return;
-      }
-
-      const decision = await sendVoice(uri, currentSessionId);
-
-      if (decision.sessionId) {
-        useVoiceStore.getState().setSessionId(decision.sessionId);
-      }
-
-      console.log("🗣 Assistant:", decision.message, "Stage:", decision.stage);
-
-      // Check if authentication is required based on conversation stage
-      if (decision.stage === 'IDENTITY' && authStatus !== 'authenticated') {
-        console.log("🔐 Identity stage detected, starting inline auth flow");
-
-        // Start inline auth flow
-        setIsInAuthFlow(true);
-        setAuthStep('nationalId');
-        setAuthTriggeredByVoice(true); // Mark that auth was triggered by voice
-        setRecordingState("idle");
-        return;
-      }
-      
-      if (decision.audioBase64) {
-        setRecordingState("playing");
-        await playTts(decision.audioBase64, currentVoiceMode);
-        useVoiceStore.getState().setShouldResumeListening(true);
-      } else {
-        setRecordingState("idle");
-      }
-    } catch (err) {
-      console.error("❌ Error processing audio:", err);
-      setRecordingState("error");
-    }
-  };
+  // (processAudio and handleSilenceDetected are declared above, before the
+  //  shouldResumeListening useEffect that depends on them.)
 
   const voiceMode = useVoiceStore((s) => s.voiceMode);
   const setVoiceMode = useVoiceStore((s) => s.setVoiceMode);
@@ -384,10 +584,10 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     }
 
     const newMode = voiceMode === 'earpiece' ? 'speaker' : 'earpiece';
-    
+
     // Update UI immediately
     setVoiceMode(newMode);
-    
+
     // Update backend
     try {
       const { updateVoiceMode } = await import('../voiceApi');
@@ -410,10 +610,10 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity onPress={toggleVoiceMode} style={styles.headerIconBtn} accessibilityRole="button">
-              <Ionicons 
-                name={voiceMode === 'speaker' ? 'volume-high' : 'ear'} 
-                size={iconSizes.md} 
-                color={colors.headerText} 
+              <Ionicons
+                name={voiceMode === 'speaker' ? 'volume-high' : 'ear'}
+                size={iconSizes.md}
+                color={colors.headerText}
               />
             </TouchableOpacity>
             <TouchableOpacity onPress={clear} style={styles.headerIconBtn} accessibilityRole="button">
