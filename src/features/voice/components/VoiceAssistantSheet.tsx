@@ -102,26 +102,22 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
       resolve();
     };
 
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (done) return;
-      if (!status.isLoaded) return;
+   sound.setOnPlaybackStatusUpdate((status) => {
+  if (done) return;
+  if (!status.isLoaded) return;
 
-      if (status.didJustFinish) { finish('didJustFinish'); return; }
-
-      if (
-        status.durationMillis && status.durationMillis > 0 &&
-        status.positionMillis != null &&
-        status.positionMillis >= status.durationMillis * 0.99
-      ) {
-        finish('position>=90%');
-        return;
-      }
-
-      if (playbackStarted && status.isPlaying === false) {
-        finish('isPlaying=false after start');
-        return;
-      }
-    });
+ if (status.didJustFinish) {
+    finish("didJustFinish");
+    return;
+  }
+  if (
+    status.durationMillis &&
+    status.positionMillis &&
+    status.positionMillis >= status.durationMillis * 0.98
+  ) {
+    finish("position>=98%");
+  }
+});
 
     safetyTimer = setTimeout(() => {
       console.warn(`⚠️ [playTts] Safety timer fired after ${durationMs + 300}ms — forcing finish`);
@@ -147,8 +143,9 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
               finish('poll:position>=90%');
               return;
             }
-            if (!status.isPlaying) { finish('poll:isPlaying=false'); return; }
-          } catch {
+            if (status.didJustFinish) {
+   finish('poll:didJustFinish');
+}          } catch {
             finish('poll:error');
           }
         }, 50);

@@ -5,7 +5,7 @@ const API_URL = `${process.env.EXPO_PUBLIC_API_BASE_URL}/voice/stt`;
 
 export type VoiceDecisionResponse = {
   ok: boolean;
-  sessionId: string;          
+  sessionId: string;
   stage: string;
   message: string;
   audioBase64?: string;
@@ -14,7 +14,7 @@ export type VoiceDecisionResponse = {
 
 export async function sendVoice(
   uri: string,
-  sessionId: string           
+  sessionId: string
 ): Promise<VoiceDecisionResponse> {
 
   const url =
@@ -22,15 +22,21 @@ export async function sendVoice(
       ? `${API_URL}?sessionId=${encodeURIComponent(sessionId)}`
       : API_URL;
 
-  const response = await FileSystem.uploadAsync(url, uri, {
-    httpMethod: "POST",
-    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+
+  const response = await fetch(url, {
+    method: "POST",
     headers: {
       "Content-Type": "audio/wav",
     },
+    body: binary,
   });
 
-  return JSON.parse(response.body) as VoiceDecisionResponse;
+  return await response.json();
 }
 
 /**
