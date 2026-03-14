@@ -242,16 +242,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
 
         if (decision.audioBase64) {
-          const voice = useVoiceStore.getState();
+          const audioBase64 = decision.audioBase64;
 
-          // Only play audio if voice interface is actually open
-          if (voice.isOpen) {
+          // The sheet may still be in the process of reopening (pendingReopenAfterAuth).
+          // Wait up to 2 s for it to open before playing.
+          const waitForSheetOpen = (): Promise<boolean> =>
+            new Promise((resolve) => {
+              const deadline = Date.now() + 2000;
+              const check = () => {
+                if (useVoiceStore.getState().isOpen) {
+                  resolve(true);
+                } else if (Date.now() >= deadline) {
+                  resolve(false);
+                } else {
+                  setTimeout(check, 50);
+                }
+              };
+              check();
+            });
+
+          const isSheetOpen = await waitForSheetOpen();
+          if (isSheetOpen) {
+            const voice = useVoiceStore.getState();
             voice.setRecordingState("playing");
-            await playTts(decision.audioBase64);
+            await playTts(audioBase64, voice.voiceMode);
             voice.setRecordingState("idle");
             voice.setShouldResumeListening(true);
           } else {
-            console.log("[AUTH→DECISION] Skipping audio playback - voice interface not open");
+            console.log("[AUTH→DECISION] Sheet never opened within 2 s — skipping audio");
           }
         }
       }

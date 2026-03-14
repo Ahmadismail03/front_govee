@@ -23,6 +23,16 @@ export function AuthStartScreen({ navigation, route }: Props) {
   const requestLoginOtp = useAuthStore((s) => s.requestLoginOtp);
   const requestSignupOtp = useAuthStore((s) => s.requestSignupOtp);
 
+  // Reset the signup flow whenever the user edits nationalId or phone after
+  // the server already confirmed "new user" — prevents stale state.
+  React.useEffect(() => {
+    if (needsSignup) {
+      setNeedsSignup(false);
+      setFullName('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nationalId, phoneNumber]);
+
   const onSubmit = async () => {
     try {
       const nid = nationalId.trim();

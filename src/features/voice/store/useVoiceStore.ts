@@ -33,6 +33,9 @@ type VoiceState = {
   shouldResumeListening: boolean;
   setShouldResumeListening: (v: boolean) => void;
 
+  pendingReopenAfterAuth: boolean;
+  setPendingReopenAfterAuth: (v: boolean) => void;
+
   setIsOpen: (open: boolean) => void;
   setRecordingState: (state: VoiceRecordingState) => void;
   clear: () => void;
@@ -77,7 +80,7 @@ function pickAuthValue(
 export const useVoiceStore = create<VoiceState>((set, get) => ({
   isOpen: false,
   sessionId: null,
-  voiceMode: 'earpiece',
+  voiceMode: 'speaker',
   messages: [],
   recordingState: 'idle',
   error: null,
@@ -88,6 +91,9 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   setSessionId: (sessionId) => set({ sessionId }),
   setVoiceMode: (mode) => set({ voiceMode: mode }),
 
+  pendingReopenAfterAuth: false,
+  setPendingReopenAfterAuth: (v) => set({ pendingReopenAfterAuth: v }),
+
   authTriggeredByVoice: false,
   pendingAuthData: null,
 
@@ -97,12 +103,13 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   clear: () =>
     set({
       sessionId: null,
-      voiceMode: 'earpiece',
+      voiceMode: 'speaker',
       messages: [],
       recordingState: 'idle',
       error: null,
       authTriggeredByVoice: false,
       pendingAuthData: null,
+      pendingReopenAfterAuth: false,
       shouldResumeListening: false,
     }),
 

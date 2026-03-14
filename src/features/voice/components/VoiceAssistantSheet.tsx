@@ -1,4 +1,13 @@
-import { Modal, StyleSheet, Text, TouchableOpacity, View, TextInput, Alert } from 'react-native';
+import {
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  TextInput,
+  Animated,
+  Easing,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +15,7 @@ import { borderRadius, iconSizes, shadows, spacing, typography } from '../../../
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { useVoiceStore } from '../store/useVoiceStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { PermissionsAndroid, Platform } from "react-native";
 import { startRecording, stopRecording } from '../useVoiceRecorder';
 import { sendVoice, completeVoiceSession, createVoiceSession } from '../voiceApi';
@@ -45,9 +54,6 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
   });
 
   // Write the audio file and load the sound IN PARALLEL with the settle delay.
-  // Reduced SETTLE_MS from 300→150ms: the pre-warm audio mode switch in
-  // processAudio() already runs during the API round-trip, so we only need a
-  // small settle window here.
   const SETTLE_MS = 150;
   const uri = FileSystem.cacheDirectory + `tts_${Date.now()}.mp3`;
 
@@ -58,7 +64,6 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
     }).then(() =>
       Audio.Sound.createAsync(
         { uri },
-        // 50ms polling: faster detection of completion events on Android.
         { progressUpdateIntervalMillis: 50 }
       )
     ),
@@ -66,45 +71,28 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
 
   currentSound = sound;
 
-  // Read the audio duration right after load so we can set a hard safety timer.
   const loadedStatus = await sound.getStatusAsync();
   const durationMs =
     loadedStatus.isLoaded && loadedStatus.durationMillis && loadedStatus.durationMillis > 0
       ? loadedStatus.durationMillis
-      : 15_000; // fallback for very long audio or when Android reports 0
+      : 15_000;
 
   console.log(`🎵 [playTts] LOADED - duration=${durationMs}ms, isLoaded=${loadedStatus.isLoaded}`);
 
   return new Promise<void>((resolve) => {
     let done = false;
     let safetyTimer: NodeJS.Timeout | null = null;
-    // Independent polling interval — started after playAsync() resolves so we
-    // never fire isPlaying=false before playback has actually begun.
     let pollInterval: NodeJS.Timeout | null = null;
-    // Guards the STATUS CALLBACK's tertiary isPlaying=false path only.
-    // expo-av fires an immediate initial status event after setOnPlaybackStatusUpdate()
-    // is registered where isLoaded=true but isPlaying=false (sound loaded, not yet
-    // playing). Without this guard that event fires finish() before playAsync() runs.
-    // The poll loop doesn't need this guard — it only starts after playAsync() resolves.
     let playbackStarted = false;
 
     const finish = (reason: string) => {
       if (done) return;
       done = true;
 
-      if (safetyTimer) {
-        clearTimeout(safetyTimer);
-        safetyTimer = null;
-      }
-      if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
-      }
+      if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+      if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
 
-      // Detach the callback first so no further updates arrive after cleanup.
       sound.setOnPlaybackStatusUpdate(null);
-
-      // Unload sound and delete temp file asynchronously.
       sound.unloadAsync().catch(console.warn);
       currentSound = null;
       FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => { });
@@ -114,22 +102,12 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
       resolve();
     };
 
-    // ── Status callback ───────────────────────────────────────────────────────
-    // Register BEFORE playAsync() so we never miss the very first update.
     sound.setOnPlaybackStatusUpdate((status) => {
       if (done) return;
       if (!status.isLoaded) return;
 
-      // Primary: didJustFinish — the most reliable signal when it fires.
-      if (status.didJustFinish) {
-        finish('didJustFinish');
-        return;
-      }
+      if (status.didJustFinish) { finish('didJustFinish'); return; }
 
-      // Secondary: position reached >=90% of duration.
-      // Lowered threshold from 95%→90% and guard now only requires durationMillis
-      // to be positive (positionMillis can be 0 on some Android devices when the
-      // player is in a finalising state).
       if (
         status.durationMillis && status.durationMillis > 0 &&
         status.positionMillis != null &&
@@ -139,53 +117,28 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
         return;
       }
 
-      // Tertiary: isPlaying became false AFTER playback started.
-      // The playbackStarted guard is REQUIRED here: expo-av fires an initial
-      // status event immediately after setOnPlaybackStatusUpdate() is registered
-      // with isLoaded=true, isPlaying=false (loaded but not yet playing). Without
-      // this guard that event would call finish() before playAsync() even runs.
-      // The poll loop handles the isPlaying=false case once playback is live.
       if (playbackStarted && status.isPlaying === false) {
         finish('isPlaying=false after start');
         return;
       }
     });
 
-    // ── Safety timer ─────────────────────────────────────────────────────────
-    // Fires at duration + 300ms. The polling loop (started after playAsync)
-    // should catch normal completion; this is only for catastrophic cases.
     safetyTimer = setTimeout(() => {
       console.warn(`⚠️ [playTts] Safety timer fired after ${durationMs + 300}ms — forcing finish`);
       finish('safety-timer');
     }, durationMs + 300);
 
-    // ── Start playback ────────────────────────────────────────────────────────
     sound.playAsync()
       .then(() => {
         console.log('🎵 [playTts] Playback started successfully');
-        // Mark playback as started BEFORE starting the poll so the status
-        // callback's tertiary guard is active for any concurrent callbacks.
         playbackStarted = true;
 
-        // ── Independent polling loop ──────────────────────────────────────────
-        // Started HERE (after playAsync resolves) so:
-        //  1. No no-op ticks while waiting for playback to begin.
-        //  2. isPlaying=false polls are only live once we know audio launched.
-        // On Android, expo-av status callbacks can STOP firing entirely once the
-        // MediaPlayer enters PlaybackCompleted state. We poll getStatusAsync()
-        // directly at 50ms intervals as a completely independent fallback.
         pollInterval = setInterval(async () => {
           if (done) return;
           try {
             const status = await sound.getStatusAsync();
-            if (!status.isLoaded) {
-              finish('poll:unloaded');
-              return;
-            }
-            if (status.didJustFinish) {
-              finish('poll:didJustFinish');
-              return;
-            }
+            if (!status.isLoaded) { finish('poll:unloaded'); return; }
+            if (status.didJustFinish) { finish('poll:didJustFinish'); return; }
             if (
               status.durationMillis && status.durationMillis > 0 &&
               status.positionMillis != null &&
@@ -194,12 +147,8 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
               finish('poll:position>=90%');
               return;
             }
-            if (!status.isPlaying) {
-              finish('poll:isPlaying=false');
-              return;
-            }
+            if (!status.isPlaying) { finish('poll:isPlaying=false'); return; }
           } catch {
-            // Sound was already unloaded — treat as finished.
             finish('poll:error');
           }
         }, 50);
@@ -221,16 +170,13 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const recordingState = useVoiceStore((s) => s.recordingState);
   const authStatus = useAuthStore((s) => s.authStatus);
   const setAuthTriggeredByVoice = useVoiceStore((s) => s.setAuthTriggeredByVoice);
-  const requestLoginOtp = useAuthStore((s) => s.requestLoginOtp);
-  const requestSignupOtp = useAuthStore((s) => s.requestSignupOtp);
-  const verifyOtp = useAuthStore((s) => s.verifyOtp);
+  const setPendingReopenAfterAuth = useVoiceStore((s) => s.setPendingReopenAfterAuth);
   const setRecordingState = useVoiceStore((s) => s.setRecordingState);
   const clear = useVoiceStore((s) => s.clear);
   const error = useVoiceStore((s) => s.error);
 
   useEffect(() => {
     if (!isOpen) {
-      // Reset readiness when the sheet closes so next open starts fresh
       setIsSessionReady(false);
       return;
     }
@@ -243,23 +189,15 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       console.log("🆕 Voice session initialized", sessionId);
     }
 
-    // Persist the session to the DB immediately so it exists before any STT
-    // request or close event. Fire-and-forget — don't block the UI.
     createVoiceSession(sessionId)
       .then(() => console.log("💾 Voice session persisted to DB", sessionId))
       .catch((err) => console.warn("⚠️ Failed to persist voice session:", err));
 
-    // Mark the session as ready so the mic button becomes enabled
     setIsSessionReady(true);
   }, [isOpen]);
 
-  const shouldResumeListening = useVoiceStore(
-    (s) => s.shouldResumeListening
-  );
+  const shouldResumeListening = useVoiceStore((s) => s.shouldResumeListening);
 
-  // ─── processAudio ────────────────────────────────────────────────────────────
-  // Declared here (before handleSilenceDetected + its useEffect) so all three
-  // are in the correct declaration order.
   const processAudio = async (uri: string) => {
     try {
       const voiceState = useVoiceStore.getState();
@@ -272,13 +210,6 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         return;
       }
 
-      // ⚡ PRE-WARM PLAYBACK SESSION: Switch the Android AudioManager to
-      // playback mode RIGHT NOW, before the API call, so it has the full
-      // backend round-trip (~4–6s) to settle. This is what eliminates the
-      // first-word cut-off on the very first response — the recording→playback
-      // session transition is the slowest path (~400–800ms on some devices),
-      // and 300ms inside playTts is not enough to cover it. Subsequent turns
-      // are unaffected because the session stays in playback mode between turns.
       Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
@@ -295,35 +226,34 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
       console.log("🗣 Assistant:", decision.message, "Stage:", decision.stage);
 
-      // Check if authentication is required
       if (decision.stage === 'IDENTITY' && authStatus !== 'authenticated') {
-        console.log("🔐 Identity stage detected, starting inline auth flow");
-        setIsInAuthFlow(true);
-        setAuthStep('nationalId');
+        console.log("🔐 Identity stage detected — closing sheet and navigating to AuthStart");
+        // Stop recording if still active
+        try { await stopRecording(); } catch { /* ignore */ }
+        // Mark that the sheet should reopen once auth completes
+        setPendingReopenAfterAuth(true);
         setAuthTriggeredByVoice(true);
         setRecordingState("idle");
+        // Close the sheet before navigating so it doesn't sit behind the auth screens
+        setIsOpen(false);
+        // Navigate to the proper auth screen
+        onNavigate?.('AuthStart', {});
         return;
       }
 
       if (decision.audioBase64) {
         setRecordingState("playing");
         console.log("🎤 Processing audio response...");
-        console.log("🎤 Setting recording state to PLAYING");
         try {
           await playTts(decision.audioBase64, currentVoiceMode);
           console.log("🎤 Audio playback completed, setting to idle");
-          console.log("🎤 About to call setRecordingState('idle')");
           setRecordingState("idle");
-          console.log("🎤 Called setRecordingState('idle') - state should now be idle");
         } catch (err) {
           console.error("❌ playTts error:", err);
-          console.log("🎤 Setting recording state to ERROR due to playTts error");
           setRecordingState("error");
         }
         useVoiceStore.getState().setShouldResumeListening(true);
-        console.log("🎤 Set shouldResumeListening to true");
       } else {
-        console.log("🎤 No audioBase64, setting recording state to idle");
         setRecordingState("idle");
       }
     } catch (err) {
@@ -332,10 +262,6 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     }
   };
 
-  // ⚡ FIX: useCallback with stable deps ensures the VAD interval always calls
-  // the current closure, not a stale one from the first render. Without this,
-  // silence detection works on turn 1 but breaks on turn 2+ because the
-  // onSilenceDetected ref in useVoiceRecorder.ts points to an old closure.
   const handleSilenceDetected = useCallback(async (uri: string) => {
     try {
       setRecordingState("processing");
@@ -351,71 +277,123 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     if (shouldResumeListening && isOpen) {
       (async () => {
         console.log("🎤 Auto resuming mic after TTS - starting recording");
-        // State is already "idle" (set in processAudio above). Start recording
-        // and only move to "listening" once the recorder is actually running.
         await startRecording(handleSilenceDetected);
         console.log("🎤 Recording started successfully, setting state to listening");
         useVoiceStore.getState().setRecordingState("listening");
-        console.log("🎤 Set recording state to listening");
         useVoiceStore.getState().setShouldResumeListening(false);
-        console.log("🎤 Set shouldResumeListening to false");
       })().catch((err) => {
         console.error("🎤 Error in auto-resume mic:", err);
         useVoiceStore.getState().setRecordingState("error");
       });
     }
-    // ⚡ FIX: handleSilenceDetected in deps so effect always uses current closure.
   }, [shouldResumeListening, isOpen, handleSilenceDetected]);
 
-  // Inline auth state
-  const [isInAuthFlow, setIsInAuthFlow] = useState(false);
-  const [authStep, setAuthStep] = useState<'nationalId' | 'phoneNumber' | 'fullName' | 'otp' | null>(null);
-  const [authInputs, setAuthInputs] = useState({
-    nationalId: '',
-    phoneNumber: '',
-    fullName: '',
-    otp: ''
-  });
-  const [authLoading, setAuthLoading] = useState(false);
-  // isSessionReady: true once a session ID has been initialised for this open.
   const [isSessionReady, setIsSessionReady] = useState(false);
-  // hasStartedSession: true after the mic button is pressed once — locks the
-  // button for the rest of the session (auto-resume handles subsequent turns).
   const [hasStartedSession, setHasStartedSession] = useState(false);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  // Debug onNavigate prop
   React.useEffect(() => {
     console.log("🎤 VoiceAssistantSheet mounted, onNavigate:", typeof onNavigate);
   }, [onNavigate]);
 
-  const stateLabel = useMemo(() => {
-    const label = (() => {
-      switch (recordingState) {
-        case 'listening':
-          return t('voice.listening');
-        case 'processing':
-          return t('voice.processing');
-        case 'playing':
-          return t('voice.playing');
-        case 'error':
-          return t('voice.error');
-        default:
-          return '';
-      }
-    })();
-    const shouldShowStateBar = recordingState !== 'idle' || error;
-    console.log(`🎤 UI stateLabel: "${label}" (recordingState: ${recordingState}, error: ${error}) - StateBar: ${shouldShowStateBar ? 'VISIBLE' : 'HIDDEN'}`);
-    return label;
-  }, [recordingState, t, error]);
+  // ─── Animation refs ────────────────────────────────────────────────────────
+  const pulseScale1 = useRef(new Animated.Value(1)).current;
+  const pulseOpacity1 = useRef(new Animated.Value(0)).current;
+  const pulseScale2 = useRef(new Animated.Value(1)).current;
+  const pulseOpacity2 = useRef(new Animated.Value(0)).current;
+  const processingRotation = useRef(new Animated.Value(0)).current;
+  const responseCardOpacity = useRef(new Animated.Value(0)).current;
+  const prevMessageRef = useRef('');
 
-  const micIcon =
-    recordingState === 'processing'
-      ? 'sync'
-      : recordingState === 'listening'
-        ? 'support-agent'
-        : 'support-agent';
+  // Dual expanding rings while listening
+  useEffect(() => {
+    if (recordingState !== 'listening') {
+      pulseScale1.setValue(1);
+      pulseOpacity1.setValue(0);
+      pulseScale2.setValue(1);
+      pulseOpacity2.setValue(0);
+      return;
+    }
 
+    let isMounted = true;
+    let loop2: Animated.CompositeAnimation | null = null;
+
+    pulseScale1.setValue(1);
+    pulseOpacity1.setValue(0.7);
+    const loop1 = Animated.loop(
+      Animated.parallel([
+        Animated.timing(pulseScale1, {
+          toValue: 2.3,
+          duration: 1400,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseOpacity1, {
+          toValue: 0,
+          duration: 1400,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop1.start();
+
+    const timerId = setTimeout(() => {
+      if (!isMounted) return;
+      pulseScale2.setValue(1);
+      pulseOpacity2.setValue(0.5);
+      loop2 = Animated.loop(
+        Animated.parallel([
+          Animated.timing(pulseScale2, {
+            toValue: 2.3,
+            duration: 1400,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseOpacity2, {
+            toValue: 0,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      loop2.start();
+    }, 500);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timerId);
+      loop1.stop();
+      if (loop2) loop2.stop();
+      pulseScale1.setValue(1);
+      pulseOpacity1.setValue(0);
+      pulseScale2.setValue(1);
+      pulseOpacity2.setValue(0);
+    };
+  }, [recordingState]);
+
+  // Spinning icon while processing
+  useEffect(() => {
+    if (recordingState !== 'processing') {
+      processingRotation.stopAnimation();
+      processingRotation.setValue(0);
+      return;
+    }
+    processingRotation.setValue(0);
+    Animated.loop(
+      Animated.timing(processingRotation, {
+        toValue: 1,
+        duration: 900,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+    return () => {
+      processingRotation.stopAnimation();
+      processingRotation.setValue(0);
+    };
+  }, [recordingState]);
+
+  // Fade-in response card when a new assistant message arrives
   const lastAssistantMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const m = messages[i];
@@ -423,17 +401,65 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     }
     return '';
   }, [messages]);
+
+  useEffect(() => {
+    if (lastAssistantMessage && lastAssistantMessage !== prevMessageRef.current) {
+      prevMessageRef.current = lastAssistantMessage;
+      responseCardOpacity.setValue(0);
+      Animated.timing(responseCardOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [lastAssistantMessage]);
+
+  // ─── State-derived values ─────────────────────────────────────────────────
+
+  /** Accent color that drives the mic button and rings */
+  const micStateColor = useMemo(() => {
+    switch (recordingState) {
+      case 'listening': return '#22C55E'; // vibrant green
+      case 'processing': return '#F59E0B'; // amber
+      case 'playing': return '#6366F1'; // indigo
+      case 'error': return '#EF4444'; // red
+      default: return colors.primary;
+    }
+  }, [recordingState, colors.primary]);
+
+  /** Icon shown inside the mic button */
+  const micStateIcon = useMemo<string>(() => {
+    switch (recordingState) {
+      case 'processing': return 'sync';
+      case 'playing': return 'volume-up';
+      case 'error': return 'error-outline';
+      default: return 'mic';
+    }
+  }, [recordingState]);
+
+  /** Short contextual text shown below the mic button */
+  const stateSubtitle = useMemo(() => {
+    if (error) return error;
+    switch (recordingState) {
+      case 'listening': return t('voice.listening');
+      case 'processing': return t('voice.processing');
+      case 'playing': return t('voice.playing');
+      case 'error': return t('voice.error');
+      default: return hasStartedSession ? '' : t('voice.tapToSpeak');
+    }
+  }, [recordingState, error, hasStartedSession, t]);
+
+  const spinInterpolation = processingRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   const handleClose = async () => {
-    // 1. Stop the recorder — errors here must NOT prevent session completion.
     if (recordingState === "listening") {
-      try {
-        await stopRecording();
-      } catch (err) {
-        console.warn("⚠️ stopRecording on close failed (ignored):", err);
-      }
+      try { await stopRecording(); }
+      catch (err) { console.warn("⚠️ stopRecording on close failed (ignored):", err); }
     }
 
-    // 2. Always mark the session COMPLETED in the DB.
     try {
       const sid = useVoiceStore.getState().sessionId;
       if (sid) {
@@ -444,8 +470,6 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       console.warn("⚠️ completeVoiceSession on close failed:", err);
     }
 
-    // 3. Always reset local state and close.
-    //    Clear sessionId so the next open always creates a brand-new session.
     useVoiceStore.getState().setSessionId(null);
     setRecordingState("idle");
     setIsSessionReady(false);
@@ -455,7 +479,6 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   async function requestMicPermission() {
     if (Platform.OS !== "android") return true;
-
     const granted = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
       {
@@ -464,18 +487,14 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         buttonPositive: "OK",
       }
     );
-
     return granted === PermissionsAndroid.RESULTS.GRANTED;
   }
 
   const onMic = async () => {
-    // Only allow a single manual press to start the session.
-    // All subsequent turns are handled automatically via shouldResumeListening.
     if (!isSessionReady || hasStartedSession) return;
-
     try {
       if (recordingState === "idle") {
-        setHasStartedSession(true); // lock the button immediately
+        setHasStartedSession(true);
         await startRecording(handleSilenceDetected);
         setRecordingState("listening");
       }
@@ -484,108 +503,6 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       setRecordingState("error");
     }
   };
-
-  const handleAuthInputSubmit = async () => {
-    if (!authStep) return;
-
-    const currentValue = authInputs[authStep];
-    if (!currentValue.trim()) return;
-
-    setAuthLoading(true);
-    try {
-      if (authStep === 'nationalId') {
-        // Store nationalId and move to phone
-        setAuthInputs(prev => ({ ...prev, nationalId: currentValue }));
-        setAuthStep('phoneNumber');
-        setAuthLoading(false);
-        return;
-      }
-
-      if (authStep === 'phoneNumber') {
-        // Try login first
-        try {
-          await requestLoginOtp(authInputs.nationalId, currentValue);
-          setAuthInputs(prev => ({ ...prev, phoneNumber: currentValue }));
-          setAuthStep('otp');
-        } catch (error) {
-          console.log("🔄 Login failed, switching to signup flow");
-          // If login fails, switch to signup - ask for full name
-          setAuthInputs(prev => ({ ...prev, phoneNumber: currentValue }));
-          setAuthStep('fullName');
-        }
-        setAuthLoading(false);
-        return;
-      }
-
-      if (authStep === 'fullName') {
-        // This means it's signup - call requestSignupOtp
-        await requestSignupOtp(authInputs.nationalId, authInputs.phoneNumber, currentValue);
-        setAuthInputs(prev => ({ ...prev, fullName: currentValue }));
-        setAuthStep('otp');
-        setAuthLoading(false);
-        return;
-      }
-
-      if (authStep === 'otp') {
-        // Call verifyOtp
-        verifyOtp(authInputs.phoneNumber, currentValue);
-        const voice = useVoiceStore.getState();
-        voice.setPendingAuthData({
-          nationalId: authInputs.nationalId,
-          phoneNumber: authInputs.phoneNumber,
-          fullName: authInputs.fullName,
-          otp: currentValue,
-        });
-        setIsInAuthFlow(false);
-        setAuthStep(null);
-        setAuthInputs({
-          nationalId: '',
-          phoneNumber: '',
-          fullName: '',
-          otp: '',
-        });
-        setAuthLoading(false);
-
-        verifyOtp(authInputs.phoneNumber, currentValue)
-          .catch((error) => {
-            console.error("❌ verifyOtp failed:", error);
-            // Alert.alert('Error', 'Authentication failed. Please try again.');
-          });
-        return;
-      }
-    } catch (error) {
-      console.log("❌Error during authentication step:", error);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleAuthInputChange = (field: keyof typeof authInputs, value: string) => {
-    setAuthInputs(prev => ({ ...prev, [field]: value }));
-  };
-
-  const getAuthStepLabel = () => {
-    switch (authStep) {
-      case 'nationalId': return t('auth.enterNationalId');
-      case 'phoneNumber': return t('auth.enterPhoneNumber');
-      case 'fullName': return t('auth.enterFullName');
-      case 'otp': return t('auth.enterVerificationCode');
-      default: return '';
-    }
-  };
-
-  const getAuthStepPlaceholder = () => {
-    switch (authStep) {
-      case 'nationalId': return t('auth.nationalId');
-      case 'phoneNumber': return t('auth.phoneNumber');
-      case 'fullName': return t('auth.fullName');
-      case 'otp': return t('auth.otp');
-      default: return '';
-    }
-  };
-
-  // (processAudio and handleSilenceDetected are declared above, before the
-  //  shouldResumeListening useEffect that depends on them.)
 
   const voiceMode = useVoiceStore((s) => s.voiceMode);
   const setVoiceMode = useVoiceStore((s) => s.setVoiceMode);
@@ -598,82 +515,50 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     }
 
     const newMode = voiceMode === 'earpiece' ? 'speaker' : 'earpiece';
-
-    // Update UI immediately
     setVoiceMode(newMode);
 
-    // Update backend
     try {
       const { updateVoiceMode } = await import('../voiceApi');
       await updateVoiceMode(sessionId, newMode);
       console.log(`✅ Voice mode updated to ${newMode}`);
     } catch (err) {
       console.error("❌ Failed to update voice mode on backend:", err);
-      // Revert on failure
       setVoiceMode(voiceMode);
     }
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  const isMicDisabled = !isSessionReady || hasStartedSession;
+
   return (
     <Modal visible={isOpen} animationType="slide" onRequestClose={() => setIsOpen(false)}>
       <SafeAreaView style={styles.container} edges={['top']}>
+
+        {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <MaterialIcons name="support-agent" size={iconSizes.md} color={colors.headerText} />
             <Text style={styles.headerTitle}>{t('voice.title')}</Text>
           </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity onPress={toggleVoiceMode} style={styles.headerIconBtn} accessibilityRole="button">
-              <Ionicons
-                name={voiceMode === 'speaker' ? 'volume-high' : 'ear'}
-                size={iconSizes.md}
-                color={colors.headerText}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleClose} style={styles.headerIconBtn} accessibilityRole="button">
-              <Ionicons name="close" size={iconSizes.lg} color={colors.headerText} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={handleClose}
+            style={styles.headerIconBtn}
+            accessibilityRole="button"
+          >
+            <Ionicons name="close" size={iconSizes.lg} color={colors.headerText} />
+          </TouchableOpacity>
         </View>
 
+        {/* ── Body ── */}
         <View style={styles.body}>
-          {isInAuthFlow && authStep ? (
-            <View style={styles.authContainer}>
-              <Text style={styles.authTitle}>{t('auth.identityVerification')}</Text>
-              <Text style={styles.authSubtitle}>{getAuthStepLabel()}</Text>
-
-              <TextInput
-                style={styles.authInput}
-                placeholder={getAuthStepPlaceholder()}
-                value={authInputs[authStep]}
-                onChangeText={(value) => handleAuthInputChange(authStep, value)}
-                keyboardType={authStep === 'phoneNumber' || authStep === 'otp' || authStep === 'nationalId' ? 'phone-pad' : 'default'}
-                secureTextEntry={authStep === 'otp'}
-                autoCapitalize={authStep === 'fullName' ? 'words' : 'none'}
-                autoCorrect={false}
-                editable={!authLoading}
-              />
-
-              <TouchableOpacity
-                style={[styles.authSubmitBtn, authLoading && styles.authSubmitBtnDisabled]}
-                onPress={handleAuthInputSubmit}
-                disabled={authLoading || !authStep || !authInputs[authStep].trim()}
-              >
-                <Text style={styles.authSubmitText}>
-                  {authLoading ? t('common.processing') : t('common.submit')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : lastAssistantMessage ? (
-            <View style={styles.responseCard}>
+          {lastAssistantMessage ? (
+            <Animated.View style={[styles.responseCard, { opacity: responseCardOpacity }]}>
               <Text style={styles.responseLabel}>{t('voice.assistantLabel')}</Text>
               <Text style={styles.responseText}>{lastAssistantMessage}</Text>
-            </View>
+            </Animated.View>
           ) : (
             <View style={styles.empty}>
-              <MaterialIcons name="support-agent" size={64} color={colors.textTertiary} />
-              <Text style={styles.emptyTitle}>{t('voice.tapToSpeak')}</Text>
               <Text style={styles.emptySub}>{t('voice.examplePrompts')}</Text>
               <View style={styles.examples}>
                 <Text style={styles.example}> {t('voice.example1')}</Text>
@@ -684,38 +569,103 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
           )}
         </View>
 
-        {(recordingState !== 'idle' || error) && (
-          <View style={styles.stateBar}>
-            <Text style={styles.stateBarText}>{error ?? stateLabel}</Text>
-          </View>
-        )}
+        {/* ── Mic Zone ── */}
+        <View style={styles.micZone}>
+          {/* Icon + instruction shown only in pre-session idle — sits just above the mic */}
+          {!hasStartedSession && recordingState === 'idle' && (
+            <View style={styles.micPrompt}>
+              <MaterialIcons name="record-voice-over" size={66} color={colors.primary} />
+              <Text style={styles.micPromptText}>{t('voice.tapToSpeak')}</Text>
+            </View>
+          )}
 
+          {/* Animated pulse rings (visible during listening) */}
+          <View style={styles.micRingContainer}>
+            <Animated.View
+              style={[
+                styles.pulseRing,
+                {
+                  backgroundColor: micStateColor,
+                  opacity: pulseOpacity1,
+                  transform: [{ scale: pulseScale1 }],
+                },
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.pulseRing,
+                {
+                  backgroundColor: micStateColor,
+                  opacity: pulseOpacity2,
+                  transform: [{ scale: pulseScale2 }],
+                },
+              ]}
+            />
+
+            {/* Mic button */}
+            <TouchableOpacity
+              style={[
+                styles.micBtn,
+                { backgroundColor: micStateColor },
+                isMicDisabled && !hasStartedSession && styles.micBtnNotReady,
+              ]}
+              onPress={onMic}
+              disabled={isMicDisabled}
+              accessibilityRole="button"
+              accessibilityLabel={t('voice.micButton')}
+            >
+              {recordingState === 'processing' ? (
+                <Animated.View style={{ transform: [{ rotate: spinInterpolation }] }}>
+                  <MaterialIcons name="sync" size={34} color="#fff" />
+                </Animated.View>
+              ) : (
+                <MaterialIcons name={micStateIcon as any} size={34} color="#fff" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Status label shown only once the session is active */}
+          {(hasStartedSession || recordingState !== 'idle' || !!error) && (
+            <Text style={[styles.stateSubtitle, { color: micStateColor }]}>
+              {stateSubtitle}
+            </Text>
+          )}
+        </View>
+
+        {/* ── Bottom Controls ── */}
         <View style={styles.controls}>
           <TouchableOpacity
-            style={[
-              styles.micBtn,
-              (recordingState === 'listening' || recordingState === 'processing') && styles.micBtnActive,
-              (!isSessionReady || hasStartedSession) && styles.micBtnDisabled,
-            ]}
-            onPress={onMic}
-            disabled={!isSessionReady || hasStartedSession}
+            onPress={toggleVoiceMode}
+            style={styles.audioModeBtn}
             accessibilityRole="button"
-            accessibilityLabel={t('voice.micButton')}
           >
-            <MaterialIcons name={micIcon as any} size={iconSizes.lg} color={colors.textInverse} />
+            <Ionicons
+              name={voiceMode === 'speaker' ? 'volume-high-outline' : 'ear-outline'}
+              size={20}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.audioModeLabel}>
+              {voiceMode === 'speaker' ? 'مكبر الصوت' : 'سماعة الهاتف'}
+            </Text>
           </TouchableOpacity>
         </View>
+
       </SafeAreaView>
     </Modal>
   );
 }
 
 function createStyles(colors: ReturnType<typeof useThemeColors>) {
+  const MIC_SIZE = 80;
+  const RING_CONTAINER_SIZE = MIC_SIZE * 2.5; // room for rings to expand
+
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
+
+    // ── Header ──────────────────────────────────────────────────────────────
     header: {
       backgroundColor: colors.primary,
       paddingHorizontal: spacing.lg,
@@ -729,11 +679,6 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       alignItems: 'center',
       gap: spacing.sm,
     },
-    headerRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-    },
     headerIconBtn: {
       padding: spacing.xs,
     },
@@ -742,24 +687,36 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       fontSize: typography.lg,
       fontWeight: typography.bold,
     },
+
+    // ── Body ─────────────────────────────────────────────────────────────────
     body: {
       flex: 1,
     },
     empty: {
       flex: 1,
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'center',      // pull examples down, flush above mic zone
       paddingHorizontal: spacing.xl,
-      gap: spacing.md,
+      paddingBottom: spacing.lg,
+      gap: spacing.sm,                 // tighter gap between label and card
     },
-    emptyTitle: {
-      fontSize: typography.xl,
+    // Icon + instruction block inside micZone (pre-session idle)
+    micPrompt: {
+      alignItems: 'center',
+      gap: spacing.sm,       // tighter spacing between icon and label
+      paddingBottom: 0,      // flush against the mic — no extra gap
+    },
+    micPromptText: {
+      fontSize: typography.lg,
       fontWeight: typography.bold,
-      color: colors.text,
+      color: colors.primary,           // red — strong call-to-action
+      textAlign: 'center',
     },
     emptySub: {
       fontSize: typography.base,
       color: colors.textSecondary,
+      alignSelf: 'stretch',  // stretch to full width so textAlign works
+      textAlign: 'left',    // RTL: label sits on the right
     },
     examples: {
       alignSelf: 'stretch',
@@ -767,10 +724,13 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       borderRadius: borderRadius.lg,
       borderWidth: 1,
       borderColor: colors.border,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.primary,
       padding: spacing.md,
       gap: spacing.sm,
       ...shadows.sm,
     },
+
     example: {
       fontSize: typography.sm,
       color: colors.textSecondary,
@@ -793,43 +753,82 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     responseText: {
       fontSize: typography.base,
       color: colors.text,
+      lineHeight: 24,
     },
-    stateBar: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.sm,
-      backgroundColor: colors.primaryLight,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+
+    // ── Mic Zone ────────────────────────────────────────────────────────────
+    micZone: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 0,
+      paddingBottom: spacing.xl,
+      gap: 0,                    // icon → text → mic: one tight block
     },
-    stateBarText: {
-      color: colors.primaryDark,
+    micRingContainer: {
+      width: RING_CONTAINER_SIZE,
+      height: RING_CONTAINER_SIZE,
+      alignItems: 'center',
+      justifyContent: 'center',
+        marginTop: -20,
+    },
+    pulseRing: {
+      position: 'absolute',
+      width: MIC_SIZE,
+      height: MIC_SIZE,
+      borderRadius: MIC_SIZE / 2,
+    },
+    micBtn: {
+      width: MIC_SIZE,
+      height: MIC_SIZE,
+      borderRadius: MIC_SIZE / 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      // Subtle shadow to lift the button off the background
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    micBtnNotReady: {
+      opacity: 0.45,
+    },
+    stateSubtitle: {
       fontSize: typography.sm,
       fontWeight: typography.semibold,
       textAlign: 'center',
+      letterSpacing: 0.3,
+      minHeight: 20, // keep consistent height even when empty
     },
+
+    // ── Bottom Controls ─────────────────────────────────────────────────────
     controls: {
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.md,
       backgroundColor: colors.surface,
       borderTopWidth: 1,
       borderTopColor: colors.border,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
     },
-    micBtn: {
-      width: 56,
-      height: 56,
+    audioModeBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
       borderRadius: borderRadius.full,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
     },
-    micBtnActive: {
-      backgroundColor: colors.success,
+    audioModeLabel: {
+      fontSize: typography.sm,
+      color: colors.textSecondary,
     },
-    micBtnDisabled: {
-      opacity: 0.4,
-    },
+
+    // ── Auth Flow ────────────────────────────────────────────────────────────
     authContainer: {
       margin: spacing.lg,
       backgroundColor: colors.surface,

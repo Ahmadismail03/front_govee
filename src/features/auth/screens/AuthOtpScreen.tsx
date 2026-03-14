@@ -22,6 +22,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
   const isLoading = useAuthStore((s) => s.isLoading);
 
   const [rememberDevice, setRememberDevice] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
 
   const handleOtpChange = (value: string, index: number) => {
     if (value.length > 1) {
@@ -41,6 +42,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
       const newOtp = [...otp];
       newOtp[index] = value;
       setOtp(newOtp);
+      setOtpError(null); // clear error when user types
       
       if (value && index < 5) {
         inputRefs.current[index + 1]?.focus();
@@ -85,6 +87,9 @@ export function AuthOtpScreen({ navigation, route }: Props) {
     } catch (e: any) {
       const backendMessage = e?.response?.data?.message;
       const message = backendMessage ?? e?.message ?? t('auth.otpError');
+      // Show inline error — clearly visible without needing to dismiss a dialog
+      setOtpError('رمز التحقق غير صحيح، حاول مرة أخرى.');
+      // Also show Alert with full backend detail (contact support option)
       Alert.alert(
         t('auth.errorTitle'),
         message,
@@ -183,6 +188,13 @@ export function AuthOtpScreen({ navigation, route }: Props) {
           borderColor: themeColors.primary,
           backgroundColor: themeColors.cardBackground,
         },
+        otpErrorText: {
+          fontSize: typography.sm,
+          fontWeight: '600',
+          color: themeColors.error ?? '#EF4444',
+          textAlign: 'center',
+          marginTop: spacing.sm,
+        },
         otpInput: {
           fontSize: typography.xxl,
           fontWeight: typography.bold,
@@ -274,6 +286,9 @@ export function AuthOtpScreen({ navigation, route }: Props) {
               <Ionicons name="information-circle-outline" size={20} color={themeColors.info} />
               <Text style={styles.hintText}>{t('auth.mockOtpHint', { otp: route.params.devOtp })}</Text>
             </View>
+          ) : null}
+          {otpError ? (
+            <Text style={styles.otpErrorText}>{otpError}</Text>
           ) : null}
         </View>
 

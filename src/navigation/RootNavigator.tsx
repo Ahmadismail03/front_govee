@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { I18nManager, StyleSheet, View } from 'react-native';
@@ -30,12 +30,29 @@ import { ReportProblemScreen } from '../features/support/screens/ReportProblemSc
 import { SettingsScreen } from '../features/settings/screens/SettingsScreen';
 import { ProfileEditScreen } from '../features/profile/screens/ProfileEditScreen';
 import { VoiceAssistantSheet } from '../features/voice/components/VoiceAssistantSheet';
+import { useVoiceStore } from '../features/voice/store/useVoiceStore';
+import { useAuthStore } from '../features/auth/store/useAuthStore';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const colors = useThemeColors();
+
+  // ── Reopen voice sheet after successful OTP auth ────────────────────────
+  const authStatus = useAuthStore((s) => s.authStatus);
+  const pendingReopenAfterAuth = useVoiceStore((s) => s.pendingReopenAfterAuth);
+  const setPendingReopenAfterAuth = useVoiceStore((s) => s.setPendingReopenAfterAuth);
+  const setVoiceIsOpen = useVoiceStore((s) => s.setIsOpen);
+
+  React.useEffect(() => {
+    if (authStatus === 'authenticated' && pendingReopenAfterAuth) {
+      console.log('✅ Auth completed with voice pending — reopening voice sheet');
+      setPendingReopenAfterAuth(false);
+      // Small delay so navigation stack settles before the modal opens
+      setTimeout(() => setVoiceIsOpen(true), 100);
+    }
+  }, [authStatus, pendingReopenAfterAuth]);
 
   // Debug navigation ref
   React.useEffect(() => {

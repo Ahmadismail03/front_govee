@@ -482,9 +482,9 @@ export const ar = {
     tapToSpeak: 'اضغط للتحدث',
     inputPlaceholder: 'اكتب سؤالك...',
     examplePrompts: 'جرب السؤال:',
-    example1: 'احجز موعدًا لتجديد الهوية',
-    example2: 'أظهر الأوقات المتاحة',
-    example3: 'ما المستندات المطلوبة؟',
+    example1: 'احجزلي موعد لتجديد الهوية',
+    example2: 'ما سعر تجديد الهوية؟',
+    example3: 'ما المستندات المطلوبة لتجديد جواز السفر؟',
     userLabel: 'أنت',
     assistantLabel: 'المساعد',
     mock: {
