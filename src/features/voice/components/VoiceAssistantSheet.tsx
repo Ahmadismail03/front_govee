@@ -9,7 +9,7 @@ import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { PermissionsAndroid, Platform } from "react-native";
 import { startRecording, stopRecording } from '../useVoiceRecorder';
-import { sendVoice } from '../voiceApi';
+import { sendVoice, completeVoiceSession, createVoiceSession } from '../voiceApi';
 import * as FileSystem from "expo-file-system/legacy";
 import { Audio } from "expo-av";
 import React from 'react';
@@ -229,19 +229,28 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const error = useVoiceStore((s) => s.error);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      // Reset readiness when the sheet closes so next open starts fresh
+      setIsSessionReady(false);
+      return;
+    }
 
     const voice = useVoiceStore.getState();
+    const sessionId = voice.sessionId ?? `vs_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
     if (!voice.sessionId) {
-      const newSessionId = `vs_${Date.now()}_${Math.random()
-        .toString(16)
-        .slice(2)}`;
-
-      voice.setSessionId(newSessionId);
-
-      console.log("🆕 Voice session initialized", newSessionId);
+      voice.setSessionId(sessionId);
+      console.log("🆕 Voice session initialized", sessionId);
     }
+
+    // Persist the session to the DB immediately so it exists before any STT
+    // request or close event. Fire-and-forget — don't block the UI.
+    createVoiceSession(sessionId)
+      .then(() => console.log("💾 Voice session persisted to DB", sessionId))
+      .catch((err) => console.warn("⚠️ Failed to persist voice session:", err));
+
+    // Mark the session as ready so the mic button becomes enabled
+    setIsSessionReady(true);
   }, [isOpen]);
 
   const shouldResumeListening = useVoiceStore(
@@ -368,6 +377,11 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     otp: ''
   });
   const [authLoading, setAuthLoading] = useState(false);
+  // isSessionReady: true once a session ID has been initialised for this open.
+  const [isSessionReady, setIsSessionReady] = useState(false);
+  // hasStartedSession: true after the mic button is pressed once — locks the
+  // button for the rest of the session (auto-resume handles subsequent turns).
+  const [hasStartedSession, setHasStartedSession] = useState(false);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   // Debug onNavigate prop
@@ -410,16 +424,33 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     return '';
   }, [messages]);
   const handleClose = async () => {
-    try {
-      if (recordingState === "listening") {
+    // 1. Stop the recorder — errors here must NOT prevent session completion.
+    if (recordingState === "listening") {
+      try {
         await stopRecording();
+      } catch (err) {
+        console.warn("⚠️ stopRecording on close failed (ignored):", err);
+      }
+    }
+
+    // 2. Always mark the session COMPLETED in the DB.
+    try {
+      const sid = useVoiceStore.getState().sessionId;
+      if (sid) {
+        await completeVoiceSession(sid);
+        console.log("✅ Voice session completed on close");
       }
     } catch (err) {
-      console.warn("Stop recording on close failed", err);
-    } finally {
-      setRecordingState("idle");
-      setIsOpen(false);
+      console.warn("⚠️ completeVoiceSession on close failed:", err);
     }
+
+    // 3. Always reset local state and close.
+    //    Clear sessionId so the next open always creates a brand-new session.
+    useVoiceStore.getState().setSessionId(null);
+    setRecordingState("idle");
+    setIsSessionReady(false);
+    setHasStartedSession(false);
+    setIsOpen(false);
   };
 
   async function requestMicPermission() {
@@ -438,32 +469,15 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   }
 
   const onMic = async () => {
+    // Only allow a single manual press to start the session.
+    // All subsequent turns are handled automatically via shouldResumeListening.
+    if (!isSessionReady || hasStartedSession) return;
+
     try {
       if (recordingState === "idle") {
+        setHasStartedSession(true); // lock the button immediately
         await startRecording(handleSilenceDetected);
         setRecordingState("listening");
-        return;
-      }
-
-      // When listening, allow manual stop
-      if (recordingState === "listening") {
-        const uri = await stopRecording();
-        if (uri) {
-          await processAudio(uri);
-        }
-        return;
-      }
-
-      // When processing, don't allow interruption
-      if (recordingState === "processing") {
-        console.log("⏳ Cannot interrupt audio processing");
-        return;
-      }
-
-      // When playing or error, reset to idle
-      if (recordingState === "playing" || recordingState === "error") {
-        setRecordingState("idle");
-        return;
       }
     } catch (err) {
       console.error("❌ Voice error", err);
@@ -616,9 +630,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
                 color={colors.headerText}
               />
             </TouchableOpacity>
-            <TouchableOpacity onPress={clear} style={styles.headerIconBtn} accessibilityRole="button">
-              <Ionicons name="trash-outline" size={iconSizes.md} color={colors.headerText} />
-            </TouchableOpacity>
+
             <TouchableOpacity onPress={handleClose} style={styles.headerIconBtn} accessibilityRole="button">
               <Ionicons name="close" size={iconSizes.lg} color={colors.headerText} />
             </TouchableOpacity>
@@ -680,8 +692,13 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
         <View style={styles.controls}>
           <TouchableOpacity
-            style={[styles.micBtn, (recordingState === 'listening' || recordingState === 'processing') && styles.micBtnActive]}
+            style={[
+              styles.micBtn,
+              (recordingState === 'listening' || recordingState === 'processing') && styles.micBtnActive,
+              (!isSessionReady || hasStartedSession) && styles.micBtnDisabled,
+            ]}
             onPress={onMic}
+            disabled={!isSessionReady || hasStartedSession}
             accessibilityRole="button"
             accessibilityLabel={t('voice.micButton')}
           >
@@ -809,6 +826,9 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     },
     micBtnActive: {
       backgroundColor: colors.success,
+    },
+    micBtnDisabled: {
+      opacity: 0.4,
     },
     authContainer: {
       margin: spacing.lg,
