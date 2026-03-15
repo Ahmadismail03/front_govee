@@ -44,7 +44,7 @@
     "@types/expo__vector-icons": "^9.0.1",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
-    "expo-module-scripts": "^5.0.8",
+    "expo-module-scripts": "^3.0.5",
     "typescript": "~5.9.2"
   },
   "private": true

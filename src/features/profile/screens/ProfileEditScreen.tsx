@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StyleSheet, Text, View, Alert, Image, I18nManager } from 'react-native';
+import { StyleSheet, Text, View, Alert, Image, I18nManager, TouchableOpacity, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -27,6 +27,16 @@ export function ProfileEditScreen({ navigation }: Props) {
 
   const nationalId = user?.nationalId ?? '—';
   const phoneNumber = user?.phoneNumber ?? '—';
+
+  const screenWidth = Dimensions.get('window').width;
+  const iconSize = screenWidth > 400 ? 28 : 24;
+  const iconOffset = -iconSize / 2;
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: undefined,
+    });
+  }, [navigation]);
 
   const onPickPhoto = async () => {
     try {
@@ -151,6 +161,27 @@ export function ProfileEditScreen({ navigation }: Props) {
 
   return (
     <Screen scroll>
+      <TouchableOpacity
+        onPress={() => {
+          const parent = navigation.getParent();
+          if (parent) {
+            parent.navigate('HomeTab');
+          }
+        }}
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: [{ translateX: iconOffset }, { translateY: iconOffset }],
+          zIndex: 10,
+        }}
+      >
+        <Ionicons
+          name={I18nManager.isRTL ? 'arrow-forward' : 'arrow-back'}
+          size={iconSize}
+          color={colors.text}
+        />
+      </TouchableOpacity>
       <View style={styles.headerCard}>
         <View style={styles.avatar}>
           {photoUri ? (

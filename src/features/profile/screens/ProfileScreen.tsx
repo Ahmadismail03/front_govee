@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { Image, I18nManager, StyleSheet, Text, View } from 'react-native';
+import { Image, I18nManager, StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import type { TabsParamList } from '../../../navigation/types';
@@ -29,8 +29,15 @@ export function ProfileScreen({ navigation }: Props) {
   const photoUri = useProfileStore((s) => s.photoUri);
   const clearProfile = useProfileStore((s) => s.clear);
 
+  const screenWidth = Dimensions.get('window').width;
+  const iconSize = screenWidth > 400 ? 28 : 24;
+  const iconOffset = -iconSize / 2;
+
   useEffect(() => {
-    navigation.setOptions({ title: t('profile.title') });
+    navigation.setOptions({
+      title: t('profile.title'),
+      headerLeft: undefined,
+    });
   }, [navigation, t]);
 
   useEffect(() => {
@@ -150,6 +157,22 @@ export function ProfileScreen({ navigation }: Props) {
 
   return (
     <Screen scroll>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('HomeTab')}
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: [{ translateX: iconOffset }, { translateY: iconOffset }],
+          zIndex: 10,
+        }}
+      >
+        <Ionicons
+          name={I18nManager.isRTL ? 'arrow-forward' : 'arrow-back'}
+          size={iconSize}
+          color={colors.text}
+        />
+      </TouchableOpacity>
       <View style={styles.headerCard}>
         <View style={styles.avatar}>
           {photoUri ? (
