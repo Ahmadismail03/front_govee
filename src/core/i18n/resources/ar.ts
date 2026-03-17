@@ -145,7 +145,7 @@ export const ar = {
     myAppointments: 'مواعيدي',
     inbox: 'الوارد',
     help: 'مركز المساعدة',
-    featuredServices: 'خدمات مميزة',
+    featuredServices: 'الخدمات الشائعة',
     services: 'الخدمات',
     viewAll: 'عرض الكل',
     noFeaturedTitle: 'لا توجد خدمات مميزة',

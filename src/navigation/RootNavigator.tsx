@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { I18nManager, StyleSheet, View } from 'react-native';
@@ -54,10 +54,11 @@ export function RootNavigator() {
     }
   }, [authStatus, pendingReopenAfterAuth]);
 
-  // Debug navigation ref
+  // Debug navigation ref — intentionally empty dep array: ref.current is mutable
+  // and must NOT be used as a useEffect dependency (causes infinite snapshot loop).
   React.useEffect(() => {
     console.log("🧭 Navigation ref ready:", !!navigationRef.current);
-  }, [navigationRef.current]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <NavigationContainer ref={navigationRef}>
@@ -266,21 +267,15 @@ export function RootNavigator() {
           <Stack.Screen name="HelpTopicDetails" component={HelpTopicDetailsScreen} />
         </Stack.Navigator>
 
-        <VoiceAssistantSheet onNavigate={(screen, params) => {
-          console.log("🎯 VoiceAssistantSheet onNavigate called:", screen, params);
-          console.log("🧭 navigationRef.current:", navigationRef.current);
+        <VoiceAssistantSheet onNavigate={useCallback((screen: string, params?: any) => {
           if (navigationRef.current) {
-            console.log("🚀 Executing navigation to:", screen);
             try {
               (navigationRef.current as any).navigate(screen, params);
-              console.log("✅ Navigation executed successfully");
             } catch (error) {
-              console.log("❌ Navigation failed:", error);
+              console.warn("❌ Navigation failed:", error);
             }
-          } else {
-            console.log("❌ navigationRef.current is null");
           }
-        }} />
+        }, [])} />
       </View>
     </NavigationContainer>
   );
