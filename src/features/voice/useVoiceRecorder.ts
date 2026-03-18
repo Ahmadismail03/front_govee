@@ -2,29 +2,45 @@ import { Audio } from "expo-av";
 import { recordingOptions } from "./recordingOptions";
 
 let recording: Audio.Recording | null = null;
-let silenceTimer: NodeJS.Timeout | undefined = undefined;
-let monitoringInterval: NodeJS.Timeout | undefined = undefined;
+// FIX 1: renamed to vadTimeout — this now holds a setTimeout handle, not setInterval.
+// Using a single non-overlapping recursive timer eliminates async-tick races entirely.
+let vadTimeout: NodeJS.Timeout | undefined = undefined;
 let onSilenceDetected: ((uri: string) => void) | null = null;
 let recordingStartTime: number | null = null;
 
-// Cache mic permission + audio mode so we only pay the setup cost once.
 let micPermissionGranted = false;
 let recordingModeSet = false;
 
-// Voice Activity Detection configuration
-const SPEECH_THRESHOLD = -35;
-const SILENCE_THRESHOLD = -38;
-// 600ms feels responsive while avoiding false triggers on breath pauses.
-const SILENCE_DURATION = 600;
-// 200ms minimum before confirming speech has started.
-const SPEECH_DURATION = 200;
+// ─── VAD configuration ────────────────────────────────────────────────────────
 
-const MIN_RECORDING_DURATION = 1000; // ms
-const MAX_RECORDING_DURATION = 6000; // ms
-const MONITORING_INTERVAL = 100;    // ms
+const SPEECH_THRESHOLD         = -35;   // dBFS absolute floor for speech
+const SILENCE_THRESHOLD        = -42;   // dBFS absolute floor for silence
+const SPEECH_RELATIVE_MARGIN   = 12;    // dB above ambient → speech
+const SILENCE_RELATIVE_MARGIN  = 8;     // dB above ambient → silence
+
+const NOISE_BASELINE_WINDOW      = 30;  // rolling sample window for ambient estimate
+const NOISE_BASELINE_MIN_SAMPLES = 10;  // samples needed before trusting dynamic thresholds
+
+// FIX 2: separate smoothing windows.
+// Speech uses a longer window to reject brief transients (cough, click, etc).
+// Silence uses a SHORT window so avgForSilence drops quickly once speech ends.
+const SPEECH_SMOOTH_WINDOW  = 5;   // 5 × 100ms = 500ms
+const SILENCE_SMOOTH_WINDOW = 3;   // 3 × 100ms = 300ms
+
+// FIX 3: after speech is confirmed, ignore silence checks for this long.
+// This gives silenceLevels time to fill with actual speech samples before
+// we start comparing against the silence threshold.
+const SPEECH_ACTIVATION_GRACE_MS = 300;  // ms
+
+const SILENCE_DURATION       = 700;   // ms of sustained silence to trigger stop
+const SPEECH_DURATION        = 200;   // ms of sustained loud audio to confirm speech
+const MIN_RECORDING_DURATION = 1000;  // ms
+const MAX_RECORDING_DURATION = 6000;  // ms
+const MONITORING_INTERVAL    = 100;   // ms between ticks
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function startRecording(onSilenceCallback?: (uri: string) => void) {
-  // Ensure any existing recording is properly cleaned up
   if (recording) {
     console.log("🧹 Cleaning up existing recording before starting new one");
     try {
@@ -36,13 +52,11 @@ export async function startRecording(onSilenceCallback?: (uri: string) => void) 
 
   onSilenceDetected = onSilenceCallback || null;
 
-  // Only request permission once; subsequent calls skip this ~50ms round trip.
   if (!micPermissionGranted) {
     const { status } = await Audio.requestPermissionsAsync();
     micPermissionGranted = status === "granted";
   }
 
-  // Set recording audio mode only once; switching modes costs ~50–150ms on Android.
   if (!recordingModeSet) {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
@@ -57,7 +71,6 @@ export async function startRecording(onSilenceCallback?: (uri: string) => void) 
   await recording.startAsync();
 
   console.log("🎙️ Recording started");
-
   startSilenceMonitoring();
 }
 
@@ -68,18 +81,12 @@ export async function stopRecording(): Promise<string | null> {
     return null;
   }
 
-  // Clear timers immediately so no pending tick can interfere.
-  if (silenceTimer) {
-    clearTimeout(silenceTimer);
-    silenceTimer = undefined;
-  }
-  if (monitoringInterval) {
-    clearInterval(monitoringInterval);
-    monitoringInterval = undefined;
+  // FIX 1: use clearTimeout (matching the recursive setTimeout approach).
+  if (vadTimeout !== undefined) {
+    clearTimeout(vadTimeout);
+    vadTimeout = undefined;
   }
 
-  // Allow the recording audio mode to be re-applied on the next startRecording
-  // so that playTts can switch to playback mode without conflict.
   recordingModeSet = false;
 
   await recording.stopAndUnloadAsync();
@@ -94,142 +101,186 @@ export async function stopRecording(): Promise<string | null> {
 function startSilenceMonitoring() {
   console.log("🎯 Starting Voice Activity Detection...");
 
-  let speechStartTime: number | null = null;
-  let silenceStartTime: number | null = null;
-  let isRecordingActive = false;
-  let recentLevels: number[] = [];
-  const MAX_RECENT_LEVELS = 10;
+  let speechStartTime:      number | null = null;
+  let silenceStartTime:     number | null = null;
+  let speechActivatedAt:    number | null = null;  // FIX 3: grace period anchor
+  let isRecordingActive     = false;
+
+  // FIX 2: two independent smoothing buffers
+  let speechLevels:  number[] = [];
+  let silenceLevels: number[] = [];
+
+  // Ambient noise baseline (built only from quiet pre-speech samples)
+  const noiseLevels: number[] = [];
+  let ambientNoiseBaseline: number | null = null;
+
   let meteringUnavailableStart: number | null = null;
 
-  // Guard flag: once we decide to stop, prevent any subsequent interval tick
-  // from firing onSilenceDetected a second time (async race fix).
-  let isStopping = false;
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
-  monitoringInterval = setInterval(async () => {
-    // If we already initiated a stop, do nothing — the interval will be
-    // cleared by stopRecording() before the next tick reaches here.
-    if (isStopping) return;
+  function pushSmoothed(buf: number[], value: number, maxLen: number): number {
+    buf.push(value);
+    if (buf.length > maxLen) buf.shift();
+    return buf.reduce((s, v) => s + v, 0) / buf.length;
+  }
 
+  function updateAmbientNoise(level: number) {
+    // Absolute guard: ignore obvious speech / transients so they don't skew baseline.
+    if (level > SILENCE_THRESHOLD + 10) return;
+    noiseLevels.push(level);
+    if (noiseLevels.length > NOISE_BASELINE_WINDOW) noiseLevels.shift();
+    ambientNoiseBaseline =
+      noiseLevels.reduce((s, v) => s + v, 0) / noiseLevels.length;
+  }
+
+  function getThresholds(): { speechThr: number; silenceThr: number } {
+    if (ambientNoiseBaseline !== null && noiseLevels.length >= NOISE_BASELINE_MIN_SAMPLES) {
+      return {
+        speechThr:  Math.max(SPEECH_THRESHOLD,  ambientNoiseBaseline + SPEECH_RELATIVE_MARGIN),
+        silenceThr: Math.max(SILENCE_THRESHOLD, ambientNoiseBaseline + SILENCE_RELATIVE_MARGIN),
+      };
+    }
+    return { speechThr: SPEECH_THRESHOLD, silenceThr: SILENCE_THRESHOLD };
+  }
+
+  // ── Core tick ─────────────────────────────────────────────────────────────
+  //
+  // FIX 1: This is a self-scheduling async function rather than a setInterval
+  // callback.  The next tick is only scheduled AFTER the current tick's await
+  // resolves, so there is never more than one tick in-flight at any time.
+  // This eliminates all async-overlap race conditions on silenceStartTime.
+
+  async function tick() {
     if (!recording || !recordingStartTime) {
-      console.log("🧹 Clearing VAD monitoring (no recording)");
-      clearInterval(monitoringInterval);
-      monitoringInterval = undefined;
+      console.log("🧹 VAD: no active recording, stopping monitor");
       return;
     }
 
     try {
-      const status = await recording.getStatusAsync();
+      const status  = await recording.getStatusAsync();
       const elapsed = Date.now() - recordingStartTime;
 
-      // Safety: stop after maximum duration
+      // ── Safety: max duration ─────────────────────────────────────────────
       if (elapsed >= MAX_RECORDING_DURATION) {
         console.log("⏰ Safety stop after maximum duration");
-        isStopping = true;
-        clearInterval(monitoringInterval);
-        monitoringInterval = undefined;
         const uri = await stopRecording();
-        if (onSilenceDetected && uri) {
-          onSilenceDetected(uri);
+        if (onSilenceDetected && uri) onSilenceDetected(uri);
+        return;   // do NOT reschedule
+      }
+
+      if (!status.isRecording) {
+        console.log("⚠️ Recording stopped unexpectedly");
+        return;   // do NOT reschedule
+      }
+
+      const currentLevel = status.metering;
+
+      // ── Metering unavailable fallback ────────────────────────────────────
+      if (currentLevel === undefined) {
+        if (meteringUnavailableStart === null) {
+          meteringUnavailableStart = Date.now();
+          console.log("⚠️ Metering unavailable, fallback mode active");
+        } else if (Date.now() - meteringUnavailableStart >= 5000) {
+          console.log("⏰ Fallback stop (no metering for 5s)");
+          const uri = await stopRecording();
+          if (onSilenceDetected && uri) onSilenceDetected(uri);
+          return;   // do NOT reschedule
         }
+        // reschedule and wait for metering to become available
+        vadTimeout = setTimeout(tick, MONITORING_INTERVAL);
         return;
       }
 
-      if (status.isRecording) {
-        let currentLevel = status.metering;
+      meteringUnavailableStart = null;
 
-        // Fallback if metering is unavailable
-        if (currentLevel === undefined) {
-          if (meteringUnavailableStart === null) {
-            meteringUnavailableStart = Date.now();
-            console.log("⚠️ Audio metering not available, using fallback mode");
-          }
-          const meteringUnavailableElapsed = Date.now() - meteringUnavailableStart;
-          if (meteringUnavailableElapsed >= 5000) {
-            console.log("⏰ Fallback stop (no metering available after 5s)");
-            isStopping = true;
-            clearInterval(monitoringInterval);
-            monitoringInterval = undefined;
-            const uri = await stopRecording();
-            if (onSilenceDetected && uri) {
-              onSilenceDetected(uri);
-            }
-          }
-          return;
-        }
+      // ── Compute two independent smoothed averages (FIX 2) ────────────────
+      const avgForSpeech  = pushSmoothed(speechLevels,  currentLevel, SPEECH_SMOOTH_WINDOW);
+      const avgForSilence = pushSmoothed(silenceLevels, currentLevel, SILENCE_SMOOTH_WINDOW);
 
-        meteringUnavailableStart = null;
+      const { speechThr, silenceThr } = getThresholds();
 
-        // Smoothed level over last N readings
-        recentLevels.push(currentLevel);
-        if (recentLevels.length > MAX_RECENT_LEVELS) {
-          recentLevels.shift();
-        }
-        const avgLevel =
-          recentLevels.reduce((sum, l) => sum + l, 0) / recentLevels.length;
+      if (!isRecordingActive) {
+        // ── Pre-speech: accumulate baseline, watch for speech onset ─────
+        updateAmbientNoise(currentLevel);
 
-        if (!isRecordingActive) {
-          // Waiting for speech to begin
-          if (avgLevel > SPEECH_THRESHOLD) {
-            if (speechStartTime === null) {
-              speechStartTime = Date.now();
-              console.log(`🎤 Detected potential speech: ${avgLevel.toFixed(1)}dB`);
-            } else if (Date.now() - speechStartTime >= SPEECH_DURATION) {
-              isRecordingActive = true;
-              speechStartTime = null;
-              silenceStartTime = null;
-              console.log(`🎙️ Speech confirmed, recording is now active`);
-            }
-          } else {
-            if (speechStartTime !== null) {
-              console.log(`🔇 Speech detection reset: ${avgLevel.toFixed(1)}dB`);
-              speechStartTime = null;
-            }
+        if (avgForSpeech > speechThr) {
+          if (speechStartTime === null) {
+            speechStartTime = Date.now();
+            console.log(
+              `🎤 Potential speech: ${avgForSpeech.toFixed(1)}dB ` +
+              `(thr: ${speechThr.toFixed(1)}dB, baseline n=${noiseLevels.length})`
+            );
+          } else if (Date.now() - speechStartTime >= SPEECH_DURATION) {
+            isRecordingActive  = true;
+            speechActivatedAt  = Date.now();
+            speechStartTime    = null;
+            silenceStartTime   = null;
+
+            // FIX 3: flush silenceLevels so pre-speech quiet samples can't
+            // cause an immediate false silence trigger.
+            silenceLevels = [];
+
+            console.log("🎙️ Speech confirmed — recording active");
           }
         } else {
-          // Speech was detected — now watching for silence
-          if (avgLevel < SILENCE_THRESHOLD) {
+          if (speechStartTime !== null) {
+            console.log(`🔇 Speech reset: ${avgForSpeech.toFixed(1)}dB`);
+            speechStartTime = null;
+          }
+        }
+
+      } else {
+        // ── Active speech: watch for silence ────────────────────────────
+
+        // FIX 3: skip silence checks during grace period so the buffer fills
+        // with real speech levels before we start comparing.
+        const inGracePeriod =
+          speechActivatedAt !== null &&
+          Date.now() - speechActivatedAt < SPEECH_ACTIVATION_GRACE_MS;
+
+        if (!inGracePeriod) {
+          if (avgForSilence < silenceThr) {
             if (silenceStartTime === null) {
               silenceStartTime = Date.now();
               console.log(
-                `🔇 Silence detected: ${avgLevel.toFixed(1)}dB (threshold: ${SILENCE_THRESHOLD}dB)`
+                `🔇 Silence start: ${avgForSilence.toFixed(1)}dB ` +
+                `(thr: ${silenceThr.toFixed(1)}dB, ` +
+                `baseline: ${ambientNoiseBaseline?.toFixed(1) ?? "n/a"}dB)`
               );
             } else if (Date.now() - silenceStartTime >= SILENCE_DURATION) {
               if (elapsed >= MIN_RECORDING_DURATION) {
-                console.log(
-                  `🔇 Silence confirmed, stopping recording after ${elapsed}ms`
-                );
-                // Set guard BEFORE clearing interval and stopping, so any
-                // concurrent async tick that resumes after the await sees it.
-                isStopping = true;
-                clearInterval(monitoringInterval);
-                monitoringInterval = undefined;
+                console.log(`✅ Silence confirmed after ${elapsed}ms — stopping`);
                 const uri = await stopRecording();
-                if (onSilenceDetected && uri) {
-                  onSilenceDetected(uri);
-                }
+                if (onSilenceDetected && uri) onSilenceDetected(uri);
+                return;   // do NOT reschedule
               } else {
-                console.log(`⏳ Recording too short (${elapsed}ms), continuing...`);
+                console.log(`⏳ Too short (${elapsed}ms) — continuing`);
                 silenceStartTime = null;
               }
             }
           } else {
+            // Sound above silence threshold — update baseline on quieter moments
+            if (avgForSilence <= speechThr) {
+              updateAmbientNoise(currentLevel);
+            }
             if (silenceStartTime !== null) {
               console.log(
-                `🎤 Speech resumed: ${avgLevel.toFixed(1)}dB, resetting silence timer`
+                `🎤 Speech resumed: ${avgForSilence.toFixed(1)}dB — silence timer reset`
               );
               silenceStartTime = null;
             }
           }
         }
-      } else {
-        console.log("⚠️ Recording stopped unexpectedly");
-        clearInterval(monitoringInterval);
-        monitoringInterval = undefined;
       }
     } catch (error) {
-      console.warn("Error in VAD monitoring:", error);
-      clearInterval(monitoringInterval);
-      monitoringInterval = undefined;
+      console.warn("VAD tick error:", error);
+      // Don't crash the whole monitor on a transient error — just reschedule.
     }
-  }, MONITORING_INTERVAL);
+
+    // Schedule the next tick only now that this one is fully resolved.
+    vadTimeout = setTimeout(tick, MONITORING_INTERVAL);
+  }
+
+  // Kick off the first tick.
+  vadTimeout = setTimeout(tick, MONITORING_INTERVAL);
 }
