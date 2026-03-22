@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -209,8 +209,8 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       padding: spacing.lg,
       borderRadius: borderRadius.lg,
       marginBottom: spacing.lg,
-      borderLeftWidth: 4,
-      borderLeftColor: colors.info,
+      borderStartWidth: 4,
+      borderStartColor: colors.info,
     },
     infoItem: {
       flexDirection: 'row',

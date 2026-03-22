@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { I18nManager, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -187,7 +187,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     marginBottom: spacing.xl,
   },
   feesValueRow: {
-    flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     alignSelf: 'flex-start',
@@ -198,8 +198,8 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     overflow: 'hidden',
     marginTop: spacing.sm,
   },
-  feeRow: {
-    flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+    feeRow: {
+      flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
@@ -210,12 +210,10 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     flex: 1,
     fontSize: typography.sm,
     fontWeight: typography.medium,
-    textAlign: I18nManager.isRTL ? 'right' : 'left',
-  },
-  feeAmount: {
-    fontSize: typography.sm,
-    fontWeight: typography.semibold,
-    textAlign: I18nManager.isRTL ? 'left' : 'right',
+    },
+    feeAmount: {
+      fontSize: typography.sm,
+      fontWeight: typography.semibold,
   },
   detailCard: {
     flex: 1,

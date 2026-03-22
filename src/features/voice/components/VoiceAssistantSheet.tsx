@@ -1,4 +1,4 @@
-import {
+﻿import {
   Modal,
   StyleSheet,
   Text,
@@ -7,7 +7,6 @@ import {
   TextInput,
   Animated,
   Easing,
-  I18nManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -716,7 +715,6 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       fontSize: typography.base,
       color: colors.textSecondary,
       alignSelf: 'stretch',  // stretch to full width so textAlign works
-      textAlign: I18nManager.isRTL ? 'right' : 'left',
     },
     examples: {
       alignSelf: 'stretch',

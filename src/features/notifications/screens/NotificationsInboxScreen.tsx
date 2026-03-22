@@ -14,7 +14,6 @@ import { useNotificationsStore } from '../store/useNotificationsStore';
 import type { Notification } from '../../../core/domain/notification';
 import { spacing, typography, borderRadius, shadows, iconSizes } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
-
 type Props = BottomTabScreenProps<TabsParamList, 'InboxTab'>;
 
 export function NotificationsInboxScreen({ navigation }: Props) {

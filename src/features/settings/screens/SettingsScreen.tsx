@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, I18nManager } from 'react-native';
+import { I18nManager, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,6 @@ import { spacing, typography, borderRadius, shadows } from '../../../shared/them
 import { useThemeStore } from '../../../core/theme/useThemeStore';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { TextField } from '../../../shared/ui/TextField';
-
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 export function SettingsScreen({ navigation }: Props) {
@@ -117,7 +116,7 @@ export function SettingsScreen({ navigation }: Props) {
           color: colors.primary,
         },
         toggleRow: {
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           marginTop: spacing.sm,
@@ -165,7 +164,7 @@ export function SettingsScreen({ navigation }: Props) {
           borderColor: colors.primary,
         },
         radioOptionContent: {
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.sm,
         },
@@ -183,7 +182,7 @@ export function SettingsScreen({ navigation }: Props) {
           marginTop: spacing.sm,
         },
         primaryButton: {
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
           gap: spacing.sm,
@@ -197,7 +196,7 @@ export function SettingsScreen({ navigation }: Props) {
           color: colors.textInverse,
         },
         dangerButton: {
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
           gap: spacing.sm,

@@ -1,10 +1,8 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Image, I18nManager } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
 import { spacing } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
-
 type Props = {
   children: React.ReactNode;
   scroll?: boolean;
@@ -14,7 +12,6 @@ type Props = {
 export function Screen({ children, scroll, keyboardAvoiding }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
- // const headerHeight = useHeaderHeight();
 
  // const keyboardVerticalOffset = Platform.OS === 'ios' ? Math.max(headerHeight, insets.top) : 0;
 const keyboardVerticalOffset =
@@ -27,8 +24,7 @@ const keyboardVerticalOffset =
         root: {
           flex: 1,
           backgroundColor: colors.background,
-          direction: I18nManager.isRTL ? 'rtl' : 'ltr',
-          writingDirection: I18nManager.isRTL ? 'rtl' : 'ltr',
+          // No direction property. I18nManager.forceRTL handles layout globally.
         },
         watermark: {
           position: 'absolute',

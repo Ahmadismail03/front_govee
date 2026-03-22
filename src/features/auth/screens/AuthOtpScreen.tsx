@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, View, Image, I18nManager, TouchableOpacity, TextInput } from 'react-native';
+import { Alert, I18nManager, StyleSheet, Text, View, Image, TouchableOpacity, TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,6 @@ import { useAuthStore } from '../store/useAuthStore';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { trustThisDeviceForNationalId } from '../utils/trustedDevice';
-
 type Props = NativeStackScreenProps<RootStackParamList, 'AuthOtp'>;
 
 export function AuthOtpScreen({ navigation, route }: Props) {
@@ -162,7 +161,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
           letterSpacing: 0.5,
         },
         otpBoxesContainer: {
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           justifyContent: 'center',
           alignItems: 'center',
           gap: spacing.sm,
@@ -207,7 +206,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
           backgroundColor: themeColors.infoLight,
           borderRadius: borderRadius.md,
           padding: spacing.md,
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.sm,
           marginTop: spacing.sm,
@@ -216,7 +215,6 @@ export function AuthOtpScreen({ navigation, route }: Props) {
           flex: 1,
           fontSize: typography.sm,
           color: themeColors.info,
-          textAlign: I18nManager.isRTL ? 'right' : 'left',
         },
         supportLink: {
           marginTop: spacing.lg,
@@ -229,7 +227,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
         },
         rememberRow: {
           marginTop: spacing.lg,
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
           gap: spacing.sm,
@@ -237,7 +235,6 @@ export function AuthOtpScreen({ navigation, route }: Props) {
         rememberText: {
           fontSize: typography.sm,
           color: themeColors.textSecondary,
-          textAlign: I18nManager.isRTL ? 'right' : 'left',
         },
       }),
     [themeColors]

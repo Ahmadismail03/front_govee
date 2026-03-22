@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StyleSheet, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from './types';
 import { MainTabs } from './TabsNavigator';
 import { ServiceDetailsScreen } from '../features/services/screens/ServiceDetailsScreen';
@@ -33,14 +32,14 @@ import { ProfileEditScreen } from '../features/profile/screens/ProfileEditScreen
 import { VoiceAssistantSheet } from '../features/voice/components/VoiceAssistantSheet';
 import { useVoiceStore } from '../features/voice/store/useVoiceStore';
 import { useAuthStore } from '../features/auth/store/useAuthStore';
+import { useRtl } from '../core/i18n/useRtl';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const colors = useThemeColors();
-  const { i18n } = useTranslation();
-  const isRtlUi = i18n.dir(i18n.resolvedLanguage || i18n.language) === 'rtl';
+  const { isRtl: rtl } = useRtl();
 
   // ── Reopen voice sheet after successful OTP auth ────────────────────────
   const authStatus = useAuthStore((s) => s.authStatus);
@@ -64,8 +63,8 @@ export function RootNavigator() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <NavigationContainer key={`root-nav-${isRtlUi ? 'rtl' : 'ltr'}`} ref={navigationRef}>
-      <View style={[styles.root, isRtlUi ? styles.rootRtl : styles.rootLtr]}>
+    <NavigationContainer key={`root-nav-${rtl ? 'rtl' : 'ltr'}`} ref={navigationRef}>
+      <View style={styles.root}>
         <Stack.Navigator
           screenOptions={{
             headerStyle: {
@@ -80,20 +79,25 @@ export function RootNavigator() {
             headerTitle: ({ children }) => (
               <HeaderTitle title={typeof children === 'string' ? children : undefined} />
             ),
+            // Place the menu (three lines) on the leading side for LTR
+            // and on the trailing side for RTL so it always appears at
+            // the top-right when the UI is Arabic.
             headerLeft: () =>
-              isRtlUi ? (
+              rtl
+                ? null
+                : (
+                    <View style={styles.headerRight}>
+                      <HeaderLogo />
+                      <HeaderMenuButton />
+                    </View>
+                  ),
+            headerRight: () =>
+              rtl ? (
                 <View style={styles.headerRight}>
                   <HeaderMenuButton />
                   <HeaderLogo />
                 </View>
               ) : null,
-            headerRight: () =>
-              isRtlUi ? null : (
-                <View style={styles.headerRight}>
-                  <HeaderLogo />
-                  <HeaderMenuButton />
-                </View>
-              ),
           }}
         >
           <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
@@ -134,17 +138,19 @@ export function RootNavigator() {
               presentation: 'modal',
               headerTitle: () => null,
               headerLeft: () =>
-                isRtlUi ? (
+                rtl
+                  ? null
+                  : (
+                      <View style={styles.headerRight}>
+                        <HeaderMenuButton />
+                      </View>
+                    ),
+              headerRight: () =>
+                rtl ? (
                   <View style={styles.headerRight}>
                     <HeaderMenuButton />
                   </View>
                 ) : null,
-              headerRight: () =>
-                isRtlUi ? null : (
-                  <View style={styles.headerRight}>
-                    <HeaderMenuButton />
-                  </View>
-                ),
             }}
           />
           <Stack.Screen
@@ -154,17 +160,19 @@ export function RootNavigator() {
               presentation: 'modal',
               headerTitle: () => null,
               headerLeft: () =>
-                isRtlUi ? (
+                rtl
+                  ? null
+                  : (
+                      <View style={styles.headerRight}>
+                        <HeaderMenuButton />
+                      </View>
+                    ),
+              headerRight: () =>
+                rtl ? (
                   <View style={styles.headerRight}>
                     <HeaderMenuButton />
                   </View>
                 ) : null,
-              headerRight: () =>
-                isRtlUi ? null : (
-                  <View style={styles.headerRight}>
-                    <HeaderMenuButton />
-                  </View>
-                ),
             }}
           />
           <Stack.Screen name="AuthOtp" component={AuthOtpScreen} options={{ presentation: 'modal' }} />
@@ -287,12 +295,9 @@ export function RootNavigator() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  rootRtl: {
-    direction: 'rtl',
-  },
-  rootLtr: {
-    direction: 'ltr',
+    // No direction property here. direction:'rtl' on a root View cascades
+    // through Yoga and double-negates explicit flexDirection:'row-reverse'
+    // styles in child components, producing LTR layout in Arabic mode.
   },
   headerRight: {
     flexDirection: 'row',

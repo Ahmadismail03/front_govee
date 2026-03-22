@@ -1,8 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputProps, I18nManager, type StyleProp, type TextStyle } from 'react-native';
+import { StyleSheet, Text, TextInput, View, type TextInputProps, type StyleProp, type TextStyle } from 'react-native';
 import { spacing, typography, borderRadius } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
-
 type Props = {
   label: string;
   value: string;
@@ -22,7 +21,6 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
           fontSize: typography.sm,
           fontWeight: typography.medium,
           color: colors.text,
-          textAlign: I18nManager.isRTL ? 'right' : 'left',
         },
         input: {
           borderWidth: 1,
@@ -33,8 +31,6 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
           fontSize: typography.base,
           color: colors.text,
           backgroundColor: colors.surface,
-          textAlign: I18nManager.isRTL ? 'right' : 'left',
-          writingDirection: I18nManager.isRTL ? 'rtl' : 'ltr',
         },
       }),
     [colors]

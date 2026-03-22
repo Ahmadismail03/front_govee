@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View, Image, I18nManager, TouchableOpacity } from 'react-native';
+﻿import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -148,7 +148,7 @@ export function AuthStartScreen({ navigation, route }: Props) {
           backgroundColor: themeColors.infoLight,
           borderRadius: borderRadius.md,
           padding: spacing.md,
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.sm,
           marginTop: spacing.sm,
@@ -157,7 +157,6 @@ export function AuthStartScreen({ navigation, route }: Props) {
           flex: 1,
           fontSize: typography.sm,
           color: themeColors.info,
-          textAlign: I18nManager.isRTL ? 'right' : 'left',
         },
         supportLink: {
           marginTop: spacing.lg,

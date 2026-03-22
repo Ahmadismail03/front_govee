@@ -22,12 +22,10 @@ import { ErrorView } from '../../../shared/ui/ErrorView';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useVoiceStore } from '../../voice/store/useVoiceStore';
-import { getCurrentLanguage } from '../../../core/i18n/init';
 import { useServicesStore } from '../../services/store/useServicesStore';
 import { getServiceImageSource } from '../../services/utils/serviceImages';
 import type { Service } from '../../../core/domain/service';
 
-const isRTL = I18nManager.isRTL;
 type Props = BottomTabScreenProps<TabsParamList, 'HomeTab'>;
 
 type Promo = {
@@ -52,11 +50,9 @@ type QuickAction = {
 // ─── Animated Quick Action Card ───────────────────────────────────────────────
 function ActionGridCard({
   item,
-  isRtl,
   colors,
 }: {
   item: QuickAction;
-  isRtl: boolean;
   colors: ReturnType<typeof useThemeColors>;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -92,19 +88,16 @@ function ActionGridCard({
           },
         ]}
       >
-        {/* Icon bubble — RTL-aware: always on the leading edge */}
+        {/* Icon bubble — always on the leading edge (native RTL handles flip) */}
         <View style={[gridStyles.iconBubble, {
           backgroundColor: item.bgColor,
-          alignSelf: isRtl ? 'flex-end' : 'flex-start',
+          alignSelf: 'flex-start',
         }]}>
           <Ionicons name={item.icon as any} size={22} color={item.color} />
         </View>
         {/* Label */}
         <Text
-          style={[
-            gridStyles.cardTitle,
-            { color: colors.text, textAlign: isRtl ? 'right' : 'left' },
-          ]}
+          style={[gridStyles.cardTitle, { color: colors.text }]}
           numberOfLines={2}
         >
           {item.title}
@@ -160,7 +153,7 @@ function VoiceFAB({ onPress }: { onPress: () => void }) {
   }, [pulse, pulseOpacity]);
 
   return (
-    <View style={fabStyles.wrapper} pointerEvents="box-none">
+    <View style={[fabStyles.wrapper, { end: 20 }]} pointerEvents="box-none">
       <Animated.View
         style={[
           fabStyles.ring,
@@ -184,7 +177,6 @@ const fabStyles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
     bottom: 28,
-    right: 20,
     width: 56,
     height: 56,
     alignItems: 'center',
@@ -212,12 +204,10 @@ const fabStyles = StyleSheet.create({
 // ─── Service Card ─────────────────────────────────────────────────────────────
 function ServiceCard({
   service,
-  isRtl,
   colors,
   onPress,
 }: {
   service: Service;
-  isRtl: boolean;
   colors: ReturnType<typeof useThemeColors>;
   onPress: () => void;
 }) {
@@ -242,10 +232,8 @@ function ServiceCard({
           {
             backgroundColor: colors.cardBackground,
             borderColor: colors.cardBorder,
-            borderLeftWidth: isRtl ? 1 : 4,
-            borderRightWidth: isRtl ? 4 : 1,
-            borderLeftColor: isRtl ? colors.cardBorder : '#C4161C',
-            borderRightColor: isRtl ? '#C4161C' : colors.cardBorder,
+            borderStartWidth: 4,
+            borderStartColor: '#C4161C',
           },
         ]}
       >
@@ -259,10 +247,7 @@ function ServiceCard({
         <View style={serviceCardStyles.content}>
           {/* Title */}
           <Text
-            style={[
-              serviceCardStyles.title,
-              { color: colors.text, textAlign: isRtl ? 'right' : 'left' },
-            ]}
+            style={[serviceCardStyles.title, { color: colors.text }]}
             numberOfLines={2}
           >
             {service.name}
@@ -271,10 +256,7 @@ function ServiceCard({
           {/* Description */}
           {Boolean(service.description) && (
             <Text
-              style={[
-                serviceCardStyles.description,
-                { color: colors.textSecondary, textAlign: isRtl ? 'right' : 'left' },
-              ]}
+              style={[serviceCardStyles.description, { color: colors.textSecondary }]}
               numberOfLines={2}
             >
               {service.description}
@@ -282,12 +264,7 @@ function ServiceCard({
           )}
 
           {/* Footer */}
-          <View
-            style={[
-              serviceCardStyles.footer,
-              { flexDirection: isRtl ? 'row-reverse' : 'row' },
-            ]}
-          >
+          <View style={serviceCardStyles.footer}>
             <View style={serviceCardStyles.badge}>
               <Text style={serviceCardStyles.badgeText}>
                 {service.category}
@@ -355,7 +332,6 @@ const serviceCardStyles = StyleSheet.create({
 export function HomeScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
-  const isRtl = I18nManager.isRTL || getCurrentLanguage() === 'ar';
   const { width } = useWindowDimensions();
 
   const carouselRef = useRef<FlatList<Promo> | null>(null);
@@ -598,11 +574,7 @@ export function HomeScreen({ navigation }: Props) {
                           padding: spacing.lg,
                           paddingTop: spacing.lg + 10,
 
-                          // padding داخلي
-                          paddingRight: isRTL ? spacing.lg + 16 : spacing.lg,
-                          paddingLeft: isRTL ? spacing.lg : spacing.lg + 14,
-
-                          flexDirection: isRTL ? 'row' : 'row-reverse',
+                          flexDirection: 'row-reverse',
                           alignItems: 'flex-start',
                           gap: spacing.md,
 
@@ -625,16 +597,13 @@ export function HomeScreen({ navigation }: Props) {
                         </View>
 
                         {/* Text column */}
-                        <View style={{ flex: 1, paddingRight: isRtl ? 10 : 0 }}>
-                          {/* Badge */}
-
+                        <View style={{ flex: 1 }}>
                           {/* Title */}
                           <Text
                             style={{
                               color: '#FFFFFF',
                               fontSize: typography.xl,
                               fontWeight: typography.bold,
-                              textAlign: isRtl ? 'right' : 'left',
                               letterSpacing: -0.5,
                               lineHeight: item.titleLineHeight,
                               marginBottom: item.titleSpacing,
@@ -648,9 +617,7 @@ export function HomeScreen({ navigation }: Props) {
                               color: 'rgba(255,255,255,0.88)',
                               fontSize: typography.sm,
                               lineHeight: typography.sm * 1.6,
-                              textAlign: isRtl ? 'right' : 'left',
                               flexShrink: 1,
-
                             }}
                           >
                             {item.subtitle}
@@ -692,7 +659,7 @@ export function HomeScreen({ navigation }: Props) {
                 {/* Section header */}
                 <View
                   style={{
-                    flexDirection: isRtl ? 'row-reverse' : 'row',
+                    flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     marginBottom: spacing.md,
@@ -724,7 +691,7 @@ export function HomeScreen({ navigation }: Props) {
                     <View
                       key={ri}
                       style={{
-                        flexDirection: isRtl ? 'row-reverse' : 'row',
+                        flexDirection: 'row',
                         gap: spacing.md,
                       }}
                     >
@@ -732,7 +699,6 @@ export function HomeScreen({ navigation }: Props) {
                         <ActionGridCard
                           key={item.key}
                           item={item}
-                          isRtl={isRtl}
                           colors={colors}
                         />
                       ))}
@@ -746,7 +712,7 @@ export function HomeScreen({ navigation }: Props) {
               {/* ── Section Divider ─────────────────────────── */}
               <View
                 style={{
-                  flexDirection: isRtl ? 'row-reverse' : 'row',
+                  flexDirection: 'row',
                   alignItems: 'center',
                   marginVertical: spacing.xl,
                   gap: spacing.md,
@@ -766,7 +732,6 @@ export function HomeScreen({ navigation }: Props) {
                     fontWeight: typography.bold,
                     color: colors.text,
                     flex: 1,
-                    textAlign: isRtl ? 'right' : 'left',
                   }}
                 >
                   {t('home.featuredServices') ?? 'الخدمات الشائعة'}
@@ -775,7 +740,7 @@ export function HomeScreen({ navigation }: Props) {
                   onPress={() => navigation.navigate('ServicesTab')}
                   accessibilityRole="button"
                   style={{
-                    flexDirection: isRtl ? 'row-reverse' : 'row',
+                    flexDirection: 'row',
                     alignItems: 'center',
                     gap: 4,
                     borderWidth: 1.5,
@@ -795,7 +760,7 @@ export function HomeScreen({ navigation }: Props) {
                     {t('home.viewAll') ?? 'عرض الكل'}
                   </Text>
                   <Ionicons
-                    name={isRtl ? 'chevron-back' : 'chevron-forward'}
+                    name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
                     size={12}
                     color="#C4161C"
                   />
@@ -809,7 +774,6 @@ export function HomeScreen({ navigation }: Props) {
                     <ServiceCard
                       key={service.id}
                       service={service}
-                      isRtl={isRtl}
                       colors={colors}
                       onPress={() =>
                         navigateTo('ServiceDetails', { serviceId: service.id })

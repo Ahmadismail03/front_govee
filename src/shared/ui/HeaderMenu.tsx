@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View, I18nManager } from 'react-native';
+import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import { borderRadius, iconSizes, shadows, spacing, typography } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
-
 type MenuItem = {
   key: string;
   icon: string;
@@ -15,12 +14,11 @@ type MenuItem = {
 };
 
 export function HeaderMenuButton() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const [open, setOpen] = useState(false);
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const isRtlUi = i18n.dir(i18n.resolvedLanguage || i18n.language) === 'rtl';
 
   const navigateTo = (screen: string, params?: any) => {
     const parent = typeof navigation?.getParent === 'function' ? navigation.getParent() : null;
@@ -73,10 +71,7 @@ export function HeaderMenuButton() {
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <View
-            style={[
-              styles.menu,
-              isRtlUi ? { left: spacing.md, right: undefined } : { right: spacing.md, left: undefined },
-            ]}
+            style={[styles.menu, { end: spacing.md }]}
           >
             {items.map((it) => (
               <Pressable
@@ -191,7 +186,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       ...shadows.sm,
     },
     item: {
-      flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+      flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
       paddingHorizontal: spacing.lg,
@@ -224,7 +219,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       lineHeight: typography.base * typography.normal,
     },
     row: {
-      flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+      flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
       paddingVertical: spacing.sm,

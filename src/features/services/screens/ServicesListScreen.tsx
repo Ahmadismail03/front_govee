@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { FlatList, I18nManager, Pressable, StyleSheet, Text, TextInput, View, ImageBackground } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, borderRadius, iconSizes, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { getServiceDisplayName } from '../utils/localization';
-
 type Props = BottomTabScreenProps<TabsParamList, 'ServicesTab'>;
 
 export function ServicesListScreen({ navigation }: Props) {
@@ -371,8 +370,6 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     fontSize: typography.base,
     color: colors.text,
     paddingVertical: spacing.md,
-    textAlign: I18nManager.isRTL ? 'right' : 'left',
-    writingDirection: I18nManager.isRTL ? 'rtl' : 'ltr',
   },
   clearButton: {
     padding: spacing.xs,

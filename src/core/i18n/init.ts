@@ -182,4 +182,13 @@ export function getCurrentLanguage(): SupportedLanguage {
   return lng === 'ar' ? 'ar' : 'en';
 }
 
+// Single source of truth for UI direction based on the
+// currently active i18n language. Use this instead of
+// reading I18nManager.isRTL directly inside components.
+export function isRtlUi(): boolean {
+  ensureI18nInitialized();
+  const dir = i18n.dir(i18n.resolvedLanguage || i18n.language);
+  return dir === 'rtl';
+}
+
 export default i18n;

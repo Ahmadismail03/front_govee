@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { Image, I18nManager, StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native';
+import { Image, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import type { TabsParamList } from '../../../navigation/types';
@@ -29,9 +29,6 @@ export function ProfileScreen({ navigation }: Props) {
   const photoUri = useProfileStore((s) => s.photoUri);
   const clearProfile = useProfileStore((s) => s.clear);
 
-  const screenWidth = Dimensions.get('window').width;
-  const iconSize = screenWidth > 400 ? 28 : 24;
-  const iconOffset = -iconSize / 2;
 
   useEffect(() => {
     navigation.setOptions({
@@ -67,7 +64,7 @@ export function ProfileScreen({ navigation }: Props) {
           borderColor: colors.cardBorder,
           borderRadius: borderRadius.lg,
           padding: spacing.lg,
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.lg,
         },
@@ -94,12 +91,10 @@ export function ProfileScreen({ navigation }: Props) {
           fontSize: typography.lg,
           fontWeight: typography.semibold,
           color: colors.text,
-          textAlign: I18nManager.isRTL ? 'right' : 'left',
         },
         headerSub: {
           fontSize: typography.sm,
           color: colors.textSecondary,
-          textAlign: I18nManager.isRTL ? 'right' : 'left',
         },
         sectionTitle: {
           fontSize: typography.base,
@@ -109,7 +104,7 @@ export function ProfileScreen({ navigation }: Props) {
         },
         changePhoto: {
           marginTop: spacing.sm,
-          alignSelf: I18nManager.isRTL ? 'flex-end' : 'flex-start',
+          alignSelf: 'flex-start',
         },
         card: {
           backgroundColor: colors.cardBackground,
@@ -120,7 +115,7 @@ export function ProfileScreen({ navigation }: Props) {
           gap: spacing.md,
         },
         row: {
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: spacing.md,
@@ -157,22 +152,6 @@ export function ProfileScreen({ navigation }: Props) {
 
   return (
     <Screen scroll>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('HomeTab')}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: [{ translateX: iconOffset }, { translateY: iconOffset }],
-          zIndex: 10,
-        }}
-      >
-        <Ionicons
-          name={I18nManager.isRTL ? 'arrow-forward' : 'arrow-back'}
-          size={iconSize}
-          color={colors.text}
-        />
-      </TouchableOpacity>
       <View style={styles.headerCard}>
         <View style={styles.avatar}>
           {photoUri ? (

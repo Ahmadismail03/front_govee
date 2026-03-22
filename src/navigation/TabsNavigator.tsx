@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { TabsParamList } from './types';
@@ -14,6 +14,7 @@ import { HeaderMenuButton } from '../shared/ui/HeaderMenu';
 import { HeaderLogo } from '../shared/ui/HeaderLogo';
 import { ProfileScreen } from '../features/profile/screens/ProfileScreen';
 import { useVoiceStore } from '../features/voice/store/useVoiceStore';
+import { useRtl } from '../core/i18n/useRtl';
 
 const Tab = createBottomTabNavigator<TabsParamList>();
 
@@ -33,10 +34,10 @@ function VoiceTabScreen() {
 }
 
 export function MainTabs() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const setVoiceOpen = useVoiceStore((s) => s.setIsOpen);
-  const isRtlUi = i18n.dir(i18n.resolvedLanguage || i18n.language) === 'rtl';
+  const { isRtl } = useRtl();
 
   return (
     <Tab.Navigator
@@ -98,20 +99,25 @@ export function MainTabs() {
           }
           return <Ionicons name={name} size={size} color={color} />;
         },
+        // Keep the logo + menu on the leading side for LTR and
+        // move them to the trailing side for RTL so the three
+        // lines are always at the top-right in Arabic.
         headerLeft: () =>
-          isRtlUi ? (
+          isRtl
+            ? null
+            : (
+                <View style={styles.headerSide}>
+                  <HeaderLogo />
+                  <HeaderMenuButton />
+                </View>
+              ),
+        headerRight: () =>
+          isRtl ? (
             <View style={styles.headerSide}>
               <HeaderMenuButton />
               <HeaderLogo />
             </View>
           ) : null,
-        headerRight: () =>
-          isRtlUi ? null : (
-            <View style={styles.headerSide}>
-              <HeaderLogo />
-              <HeaderMenuButton />
-            </View>
-          ),
       })}
     >
       <Tab.Screen name="ServicesTab" component={ServicesListScreen} options={{ title: t('tabs.services') }} />

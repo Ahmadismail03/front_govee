@@ -11,7 +11,6 @@ import { EmptyView } from '../../../shared/ui/EmptyView';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { useHelpStore } from '../store/useHelpStore';
 import type { HelpTopic } from '../../../core/domain/helpTopic';
-
 type Props = NativeStackScreenProps<RootStackParamList, 'HelpCenter'>;
 
 export function HelpCenterScreen({ navigation }: Props) {

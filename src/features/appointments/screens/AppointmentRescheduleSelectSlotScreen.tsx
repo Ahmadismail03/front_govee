@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   slotRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  slotText: { fontSize: 16, fontWeight: '600' },
+  slotText: { fontSize: 16, fontWeight: '600', textAlign: 'left' },
   bottomBar: { paddingTop: 10 },
 });

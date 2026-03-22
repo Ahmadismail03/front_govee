@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -210,7 +210,7 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
             <Text
               style={[
                 styles.sectionMeta,
-                { color: theme.textSecondary, textAlign: I18nManager.isRTL ? 'left' : 'right' },
+                { color: theme.textSecondary },
               ]}
             >
               {reminderEnabled

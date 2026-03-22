@@ -66,8 +66,7 @@ export function ServiceCard({ service, onPress }: Props) {
         badge: {
           position: 'absolute',
           top: spacing.md,
-          right: I18nManager.isRTL ? undefined : spacing.md,
-          left: I18nManager.isRTL ? spacing.md : undefined,
+          end: spacing.md,
           backgroundColor: colors.surface,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.xs,
@@ -166,7 +165,7 @@ export function ServiceCard({ service, onPress }: Props) {
           fontWeight: typography.semibold,
         },
         feesValueRow: {
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.xs,
           alignSelf: 'flex-start',
@@ -178,7 +177,7 @@ export function ServiceCard({ service, onPress }: Props) {
           marginTop: spacing.xs,
         },
         feeRow: {
-          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+          flexDirection: 'row',
           alignItems: 'flex-start',
           justifyContent: 'space-between',
           paddingVertical: spacing.sm,
@@ -189,12 +188,10 @@ export function ServiceCard({ service, onPress }: Props) {
           flex: 1,
           fontSize: typography.xs,
           fontWeight: typography.medium,
-          textAlign: I18nManager.isRTL ? 'right' : 'left',
         },
         feeAmount: {
           fontSize: typography.xs,
           fontWeight: typography.semibold,
-          textAlign: I18nManager.isRTL ? 'left' : 'right',
         },
         infoSection: {
           flexDirection: 'row',
