@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { I18nManager, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from './types';
 import { MainTabs } from './TabsNavigator';
 import { ServiceDetailsScreen } from '../features/services/screens/ServiceDetailsScreen';
@@ -38,6 +39,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export function RootNavigator() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const colors = useThemeColors();
+  const { i18n } = useTranslation();
+  const isRtlUi = i18n.dir(i18n.resolvedLanguage || i18n.language) === 'rtl';
 
   // ── Reopen voice sheet after successful OTP auth ────────────────────────
   const authStatus = useAuthStore((s) => s.authStatus);
@@ -61,8 +64,8 @@ export function RootNavigator() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <NavigationContainer ref={navigationRef}>
-      <View style={styles.root}>
+    <NavigationContainer key={`root-nav-${isRtlUi ? 'rtl' : 'ltr'}`} ref={navigationRef}>
+      <View style={[styles.root, isRtlUi ? styles.rootRtl : styles.rootLtr]}>
         <Stack.Navigator
           screenOptions={{
             headerStyle: {
@@ -78,14 +81,14 @@ export function RootNavigator() {
               <HeaderTitle title={typeof children === 'string' ? children : undefined} />
             ),
             headerLeft: () =>
-              I18nManager.isRTL ? (
+              isRtlUi ? (
                 <View style={styles.headerRight}>
                   <HeaderMenuButton />
                   <HeaderLogo />
                 </View>
               ) : null,
             headerRight: () =>
-              I18nManager.isRTL ? null : (
+              isRtlUi ? null : (
                 <View style={styles.headerRight}>
                   <HeaderLogo />
                   <HeaderMenuButton />
@@ -131,13 +134,13 @@ export function RootNavigator() {
               presentation: 'modal',
               headerTitle: () => null,
               headerLeft: () =>
-                I18nManager.isRTL ? (
+                isRtlUi ? (
                   <View style={styles.headerRight}>
                     <HeaderMenuButton />
                   </View>
                 ) : null,
               headerRight: () =>
-                I18nManager.isRTL ? null : (
+                isRtlUi ? null : (
                   <View style={styles.headerRight}>
                     <HeaderMenuButton />
                   </View>
@@ -151,13 +154,13 @@ export function RootNavigator() {
               presentation: 'modal',
               headerTitle: () => null,
               headerLeft: () =>
-                I18nManager.isRTL ? (
+                isRtlUi ? (
                   <View style={styles.headerRight}>
                     <HeaderMenuButton />
                   </View>
                 ) : null,
               headerRight: () =>
-                I18nManager.isRTL ? null : (
+                isRtlUi ? null : (
                   <View style={styles.headerRight}>
                     <HeaderMenuButton />
                   </View>
@@ -284,6 +287,12 @@ export function RootNavigator() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  rootRtl: {
+    direction: 'rtl',
+  },
+  rootLtr: {
+    direction: 'ltr',
   },
   headerRight: {
     flexDirection: 'row',

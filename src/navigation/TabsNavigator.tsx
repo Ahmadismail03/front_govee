@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { I18nManager, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { TabsParamList } from './types';
 import { useTranslation } from 'react-i18next';
@@ -33,9 +33,10 @@ function VoiceTabScreen() {
 }
 
 export function MainTabs() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = useThemeColors();
   const setVoiceOpen = useVoiceStore((s) => s.setIsOpen);
+  const isRtlUi = i18n.dir(i18n.resolvedLanguage || i18n.language) === 'rtl';
 
   return (
     <Tab.Navigator
@@ -98,14 +99,14 @@ export function MainTabs() {
           return <Ionicons name={name} size={size} color={color} />;
         },
         headerLeft: () =>
-          I18nManager.isRTL ? (
+          isRtlUi ? (
             <View style={styles.headerSide}>
               <HeaderMenuButton />
               <HeaderLogo />
             </View>
           ) : null,
         headerRight: () =>
-          I18nManager.isRTL ? null : (
+          isRtlUi ? null : (
             <View style={styles.headerSide}>
               <HeaderLogo />
               <HeaderMenuButton />

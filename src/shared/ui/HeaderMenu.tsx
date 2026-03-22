@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, I18nManager, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -15,11 +15,12 @@ type MenuItem = {
 };
 
 export function HeaderMenuButton() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const [open, setOpen] = useState(false);
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const isRtlUi = i18n.dir(i18n.resolvedLanguage || i18n.language) === 'rtl';
 
   const navigateTo = (screen: string, params?: any) => {
     const parent = typeof navigation?.getParent === 'function' ? navigation.getParent() : null;
@@ -74,7 +75,7 @@ export function HeaderMenuButton() {
           <View
             style={[
               styles.menu,
-              I18nManager.isRTL ? { left: spacing.md, right: undefined } : { right: spacing.md, left: undefined },
+              isRtlUi ? { left: spacing.md, right: undefined } : { right: spacing.md, left: undefined },
             ]}
           >
             {items.map((it) => (
