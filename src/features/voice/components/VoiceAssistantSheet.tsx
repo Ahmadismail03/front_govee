@@ -7,6 +7,7 @@ import {
   TextInput,
   Animated,
   Easing,
+  I18nManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -642,7 +643,9 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
               color={colors.textSecondary}
             />
             <Text style={styles.audioModeLabel}>
-              {voiceMode === 'speaker' ? 'مكبر الصوت' : 'سماعة الهاتف'}
+              {voiceMode === 'speaker'
+                ? t('voice.audioMode.speaker')
+                : t('voice.audioMode.earpiece')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -713,7 +716,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       fontSize: typography.base,
       color: colors.textSecondary,
       alignSelf: 'stretch',  // stretch to full width so textAlign works
-      textAlign: 'left',    // RTL: label sits on the right
+      textAlign: I18nManager.isRTL ? 'right' : 'left',
     },
     examples: {
       alignSelf: 'stretch',

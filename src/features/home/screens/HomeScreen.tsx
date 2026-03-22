@@ -766,7 +766,7 @@ export function HomeScreen({ navigation }: Props) {
                     fontWeight: typography.bold,
                     color: colors.text,
                     flex: 1,
-                    textAlign: 'right',
+                    textAlign: isRtl ? 'right' : 'left',
                   }}
                 >
                   {t('home.featuredServices') ?? 'الخدمات الشائعة'}

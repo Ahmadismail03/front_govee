@@ -34,9 +34,7 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
           color: colors.text,
           backgroundColor: colors.surface,
           textAlign: I18nManager.isRTL ? 'right' : 'left',
-        },
-        inputRTL: {
-          writingDirection: 'rtl',
+          writingDirection: I18nManager.isRTL ? 'rtl' : 'ltr',
         },
       }),
     [colors]
@@ -46,7 +44,7 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
     <View style={styles.root}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
-        style={[styles.input, I18nManager.isRTL && styles.inputRTL, customStyle]}
+        style={[styles.input, customStyle]}
         value={value}
         onChangeText={onChangeText}
         accessibilityLabel={label || 'text input'}

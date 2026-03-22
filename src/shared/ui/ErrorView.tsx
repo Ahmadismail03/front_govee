@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Button, StyleSheet, Text, View, TouchableOpacity, I18nManager } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, iconSizes, borderRadius } from '../theme/tokens';
@@ -47,7 +47,7 @@ export function ErrorView({ message, onRetry }: Props) {
           marginBottom: spacing.sm,
         },
         button: {
-          flexDirection: 'row',
+          flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
           alignItems: 'center',
           gap: spacing.sm,
           backgroundColor: colors.primary,

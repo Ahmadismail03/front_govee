@@ -487,6 +487,10 @@ export const en = {
     example3: 'What documents do I need?',
     userLabel: 'You',
     assistantLabel: 'Assistant',
+    audioMode: {
+      speaker: 'Speaker',
+      earpiece: 'Phone earpiece',
+    },
     mock: {
       prefill1: 'Prefill1: opening with service only.',
       prefill2: 'Prefill2: opening with service + date.',

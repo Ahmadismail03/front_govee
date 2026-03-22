@@ -487,6 +487,10 @@ export const ar = {
     example3: 'ما المستندات المطلوبة لتجديد جواز السفر؟',
     userLabel: 'أنت',
     assistantLabel: 'المساعد',
+    audioMode: {
+      speaker: 'مكبر الصوت',
+      earpiece: 'سماعة الهاتف',
+    },
     mock: {
       prefill1: 'تعبئة مسبقة 1: فتح الحجز بالخدمة فقط.',
       prefill2: 'تعبئة مسبقة 2: فتح الحجز بالخدمة + التاريخ.',

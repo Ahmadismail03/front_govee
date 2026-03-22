@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View, I18nManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -191,7 +191,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       ...shadows.sm,
     },
     item: {
-      flexDirection: 'row',
+      flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: spacing.sm,
       paddingHorizontal: spacing.lg,
@@ -224,7 +224,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       lineHeight: typography.base * typography.normal,
     },
     row: {
-      flexDirection: 'row',
+      flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
       alignItems: 'center',
       gap: spacing.sm,
       paddingVertical: spacing.sm,

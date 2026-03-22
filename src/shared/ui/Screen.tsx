@@ -1,5 +1,5 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Image } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Image, I18nManager } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { spacing } from '../theme/tokens';
@@ -27,6 +27,8 @@ const keyboardVerticalOffset =
         root: {
           flex: 1,
           backgroundColor: colors.background,
+          direction: I18nManager.isRTL ? 'rtl' : 'ltr',
+          writingDirection: I18nManager.isRTL ? 'rtl' : 'ltr',
         },
         watermark: {
           position: 'absolute',
