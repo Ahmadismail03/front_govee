@@ -9,6 +9,7 @@ import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { ServicesListScreen } from '../features/services/screens/ServicesListScreen';
 import { AppointmentsListScreen } from '../features/appointments/screens/AppointmentsListScreen';
 import { useThemeColors } from '../shared/theme/useTheme';
+import { spacing } from '../shared/theme/tokens';
 import { RequireAuth } from './RequireAuth';
 import { HeaderMenuButton } from '../shared/ui/HeaderMenu';
 import { HeaderLogo } from '../shared/ui/HeaderLogo';
@@ -53,6 +54,8 @@ export function MainTabs() {
         headerTitleStyle: {
           fontWeight: '700',
         },
+        headerTitleAlign: isRtl ? 'left' : 'center',
+        headerTitleContainerStyle: isRtl ? { right: 56, left: 96 } : undefined,
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
         tabBarStyle: {
@@ -99,25 +102,27 @@ export function MainTabs() {
           }
           return <Ionicons name={name} size={size} color={color} />;
         },
-        // Keep the logo + menu on the leading side for LTR and
-        // move them to the trailing side for RTL so the three
-        // lines are always at the top-right in Arabic.
+        // Arabic UX: logo fixed at far left, menu at the right.
         headerLeft: () =>
-          isRtl
-            ? null
-            : (
-                <View style={styles.headerSide}>
-                  <HeaderLogo />
-                  <HeaderMenuButton />
-                </View>
-              ),
-        headerRight: () =>
           isRtl ? (
-            <View style={styles.headerSide}>
+            <View style={styles.headerMenuSide}>
               <HeaderMenuButton />
+            </View>
+          ) : (
+            <View style={styles.headerLogoSide}>
               <HeaderLogo />
             </View>
-          ) : null,
+          ),
+        headerRight: () =>
+          isRtl ? (
+            <View style={styles.headerLogoSide}>
+              <HeaderLogo />
+            </View>
+          ) : (
+            <View style={styles.headerMenuSide}>
+              <HeaderMenuButton />
+            </View>
+          ),
       })}
     >
       <Tab.Screen name="ServicesTab" component={ServicesListScreen} options={{ title: t('tabs.services') }} />
@@ -171,9 +176,15 @@ export function MainTabs() {
 }
 
 const styles = StyleSheet.create({
-  headerSide: {
+  headerLogoSide: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginHorizontal: spacing.xs,
+  },
+  headerMenuSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.xs,
   },
   homeCircle: {
     justifyContent: 'center',

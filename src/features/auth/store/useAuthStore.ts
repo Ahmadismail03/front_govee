@@ -15,7 +15,6 @@ import { getApiBaseUrl, getApiClient } from '../../../core/api/axiosClient';
 function makeId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
-import { playTts } from '../../voice/components/VoiceAssistantSheet';
 
 export type AuthStatus = 'hydrating' | 'anonymous' | 'authenticated';
 
@@ -265,6 +264,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           if (isSheetOpen) {
             const voice = useVoiceStore.getState();
             voice.setRecordingState("playing");
+            // Dynamic import avoids static circular dependency:
+            // useAuthStore -> VoiceAssistantSheet -> useAuthStore
+            const { playTts } = await import('../../voice/components/VoiceAssistantSheet');
             await playTts(audioBase64, voice.voiceMode);
             voice.setRecordingState("idle");
             voice.setShouldResumeListening(true);

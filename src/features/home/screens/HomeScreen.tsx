@@ -51,9 +51,11 @@ type QuickAction = {
 function ActionGridCard({
   item,
   colors,
+  isRtl,
 }: {
   item: QuickAction;
   colors: ReturnType<typeof useThemeColors>;
+  isRtl: boolean;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -97,7 +99,7 @@ function ActionGridCard({
         </View>
         {/* Label */}
         <Text
-          style={[gridStyles.cardTitle, { color: colors.text }]}
+          style={[gridStyles.cardTitle, { color: colors.text, textAlign: isRtl ? 'right' : 'left' }]}
           numberOfLines={2}
         >
           {item.title}
@@ -519,6 +521,8 @@ export function HomeScreen({ navigation }: Props) {
                   overflow: 'hidden',
                   marginBottom: spacing.xl,
                   height: promoHeight,
+                  width: carouselWidth,
+                  alignSelf: 'center',
                   ...shadows.lg,
                 }}
               >
@@ -526,6 +530,7 @@ export function HomeScreen({ navigation }: Props) {
                   ref={(r) => { carouselRef.current = r; }}
                   data={promos}
                   horizontal
+                  style={{ direction: 'ltr' }}
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
                   keyExtractor={(i) => i.key}
@@ -572,14 +577,12 @@ export function HomeScreen({ navigation }: Props) {
                       <View
                         style={{
                           flex: 1,
-                          padding: spacing.lg,
+                          paddingVertical: spacing.lg,
+                          paddingHorizontal: spacing.lg + 4,
                           paddingTop: spacing.lg + 10,
-
-                          flexDirection: 'row-reverse',
+                          flexDirection: isRtl ? 'row-reverse' : 'row',
                           alignItems: 'flex-start',
                           gap: spacing.md,
-
-                          marginHorizontal: 22,
                         }}
                       >
 
@@ -608,6 +611,7 @@ export function HomeScreen({ navigation }: Props) {
                               letterSpacing: -0.5,
                               lineHeight: item.titleLineHeight,
                               marginBottom: item.titleSpacing,
+                              textAlign: isRtl ? 'right' : 'left',
                             }}
                           >
                             {item.title}
@@ -619,6 +623,7 @@ export function HomeScreen({ navigation }: Props) {
                               fontSize: typography.sm,
                               lineHeight: typography.sm * 1.6,
                               flexShrink: 1,
+                              textAlign: isRtl ? 'right' : 'left',
                             }}
                           >
                             {item.subtitle}
@@ -660,7 +665,7 @@ export function HomeScreen({ navigation }: Props) {
                 {/* Section header */}
                 <View
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     marginBottom: spacing.md,
@@ -671,6 +676,8 @@ export function HomeScreen({ navigation }: Props) {
                       fontSize: typography.base,
                       fontWeight: typography.bold,
                       color: colors.text,
+                      textAlign: isRtl ? 'right' : 'left',
+                      flex: 1,
                     }}
                   >
                     {t('home.quickActions')}
@@ -692,7 +699,7 @@ export function HomeScreen({ navigation }: Props) {
                     <View
                       key={ri}
                       style={{
-                        flexDirection: 'row',
+                        flexDirection: isRtl ? 'row-reverse' : 'row',
                         gap: spacing.md,
                       }}
                     >
@@ -701,6 +708,7 @@ export function HomeScreen({ navigation }: Props) {
                           key={item.key}
                           item={item}
                           colors={colors}
+                          isRtl={isRtl}
                         />
                       ))}
                       {/* Fill empty slot in last row if odd count */}
@@ -713,7 +721,7 @@ export function HomeScreen({ navigation }: Props) {
               {/* ── Section Divider ─────────────────────────── */}
               <View
                 style={{
-                  flexDirection: 'row',
+                  flexDirection: isRtl ? 'row-reverse' : 'row',
                   alignItems: 'center',
                   marginVertical: spacing.xl,
                   gap: spacing.md,
@@ -733,6 +741,7 @@ export function HomeScreen({ navigation }: Props) {
                     fontWeight: typography.bold,
                     color: colors.text,
                     flex: 1,
+                    textAlign: isRtl ? 'right' : 'left',
                   }}
                 >
                   {t('home.featuredServices') ?? 'الخدمات الشائعة'}
@@ -741,7 +750,7 @@ export function HomeScreen({ navigation }: Props) {
                   onPress={() => navigation.navigate('ServicesTab')}
                   accessibilityRole="button"
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
                     alignItems: 'center',
                     gap: 4,
                     borderWidth: 1.5,

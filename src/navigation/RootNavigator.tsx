@@ -66,38 +66,34 @@ export function RootNavigator() {
     <NavigationContainer key={`root-nav-${rtl ? 'rtl' : 'ltr'}`} ref={navigationRef}>
       <View style={[styles.root, { direction: rtl ? 'rtl' : 'ltr' }]}>
         <Stack.Navigator
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: colors.primary,
-              height: 112,
-            } as any,
-            headerTintColor: colors.headerText,
-            headerTitleStyle: {
-              fontWeight: '700',
-              marginTop: 0,
-            } as any,
-            headerTitle: ({ children }) => (
-              <HeaderTitle title={typeof children === 'string' ? children : undefined} />
-            ),
-            // Place the menu (three lines) on the leading side for LTR
-            // and on the trailing side for RTL so it always appears at
-            // the top-right when the UI is Arabic.
-            headerLeft: () =>
-              rtl
-                ? null
-                : (
+          screenOptions={({ route }) => {
+            const isMainTabs = route.name === 'MainTabs';
+            return {
+              headerStyle: {
+                backgroundColor: colors.primary,
+                height: 112,
+              } as any,
+              headerTintColor: colors.headerText,
+              headerTitleStyle: {
+                fontWeight: '700',
+                marginTop: 0,
+              } as any,
+              headerTitleAlign: rtl ? 'left' : 'center',
+              headerBackTitleVisible: false,
+              headerTitle: ({ children }) => (
+                <HeaderTitle title={typeof children === 'string' ? children : undefined} />
+              ),
+              // Menu only for top-level tabs. Sub-pages use default back arrow.
+              headerLeft: isMainTabs
+                ? () => (
                     <View style={styles.headerRight}>
                       <HeaderLogo />
                       <HeaderMenuButton />
                     </View>
-                  ),
-            headerRight: () =>
-              rtl ? (
-                <View style={styles.headerRight}>
-                  <HeaderMenuButton />
-                  <HeaderLogo />
-                </View>
-              ) : null,
+                  )
+                : undefined,
+              headerRight: isMainTabs ? () => null : undefined,
+            };
           }}
         >
           <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
@@ -137,20 +133,17 @@ export function RootNavigator() {
             options={{
               presentation: 'modal',
               headerTitle: () => null,
-              headerLeft: () =>
-                rtl
-                  ? null
-                  : (
-                      <View style={styles.headerRight}>
-                        <HeaderMenuButton />
-                      </View>
-                    ),
-              headerRight: () =>
-                rtl ? (
-                  <View style={styles.headerRight}>
-                    <HeaderMenuButton />
-                  </View>
-                ) : null,
+              // Auth start keeps logo at left and menu button at right.
+              headerLeft: () => (
+                <View style={styles.headerRight}>
+                  <HeaderLogo />
+                </View>
+              ),
+              headerRight: () => (
+                <View style={styles.headerRight}>
+                  <HeaderMenuButton />
+                </View>
+              ),
             }}
           />
           <Stack.Screen
@@ -159,20 +152,16 @@ export function RootNavigator() {
             options={{
               presentation: 'modal',
               headerTitle: () => null,
-              headerLeft: () =>
-                rtl
-                  ? null
-                  : (
-                      <View style={styles.headerRight}>
-                        <HeaderMenuButton />
-                      </View>
-                    ),
-              headerRight: () =>
-                rtl ? (
-                  <View style={styles.headerRight}>
-                    <HeaderMenuButton />
-                  </View>
-                ) : null,
+              headerLeft: () => (
+                <View style={styles.headerRight}>
+                  <HeaderLogo />
+                </View>
+              ),
+              headerRight: () => (
+                <View style={styles.headerRight}>
+                  <HeaderMenuButton />
+                </View>
+              ),
             }}
           />
           <Stack.Screen name="AuthOtp" component={AuthOtpScreen} options={{ presentation: 'modal' }} />

@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps, type StyleProp, type TextStyle } from 'react-native';
 import { spacing, typography, borderRadius } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
+import { useRtl } from '../../core/i18n/useRtl';
 type Props = {
   label: string;
   value: string;
@@ -11,6 +12,7 @@ type Props = {
 
 export function TextField({ label, value, onChangeText, style: customStyle, ...rest }: Props) {
   const colors = useThemeColors();
+  const { isRtl } = useRtl();
   const styles = React.useMemo(
     () =>
       StyleSheet.create({
@@ -21,6 +23,8 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
           fontSize: typography.sm,
           fontWeight: typography.medium,
           color: colors.text,
+          textAlign: isRtl ? 'right' : 'left',
+          writingDirection: isRtl ? 'rtl' : 'ltr',
         },
         input: {
           borderWidth: 1,
@@ -31,9 +35,11 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
           fontSize: typography.base,
           color: colors.text,
           backgroundColor: colors.surface,
+          textAlign: isRtl ? 'right' : 'left',
+          writingDirection: isRtl ? 'rtl' : 'ltr',
         },
       }),
-    [colors]
+    [colors, isRtl]
   );
 
   return (

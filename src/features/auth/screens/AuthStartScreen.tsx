@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -144,6 +144,10 @@ export function AuthStartScreen({ navigation, route }: Props) {
         formContainer: {
           gap: spacing.lg,
         },
+        rtlInput: {
+          textAlign: 'right',
+          writingDirection: 'rtl',
+        },
         infoCard: {
           backgroundColor: themeColors.infoLight,
           borderRadius: borderRadius.md,
@@ -185,6 +189,7 @@ export function AuthStartScreen({ navigation, route }: Props) {
             label={t('auth.nationalId')}
             value={nationalId}
             onChangeText={setNationalId}
+            style={styles.rtlInput}
             keyboardType="number-pad"
             autoCapitalize="none"
             placeholder={t('auth.nationalIdPlaceholder')}
@@ -194,6 +199,7 @@ export function AuthStartScreen({ navigation, route }: Props) {
             label={t('auth.phoneNumber')}
             value={phoneNumber}
             onChangeText={setPhoneNumber}
+            style={styles.rtlInput}
             keyboardType="phone-pad"
             autoCapitalize="none"
             placeholder={t('auth.phoneNumberPlaceholder')}
@@ -204,6 +210,7 @@ export function AuthStartScreen({ navigation, route }: Props) {
               label={t('auth.fullName')}
               value={fullName}
               onChangeText={setFullName}
+              style={styles.rtlInput}
               autoCapitalize="words"
               placeholder={t('auth.fullNamePlaceholder')}
             />
