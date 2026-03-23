@@ -1,13 +1,13 @@
 export function formatMoney(amount: number): string {
   try {
     const formatted = new Intl.NumberFormat(undefined, {
-      minimumFractionDigits: 1,
+      minimumFractionDigits: 0,
       maximumFractionDigits: 1
     }).format(amount);
 
     return `${formatted} ₪`;
   } catch {
-    return `${amount.toFixed(1)} ₪`;
+    return `${amount} ₪`;
   }
 }
 
