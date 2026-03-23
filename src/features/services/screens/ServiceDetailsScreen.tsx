@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -107,7 +107,7 @@ const currency = 'ILS';
               hasMultipleFees && pressed && { opacity: 0.85 },
             ]}
           >
-            <Text style={styles.detailValue}>{formatMoney(service.fees, currency)}</Text>
+            <Text style={styles.detailValue}>{formatMoney(service.fees)}</Text>
             {hasMultipleFees && (
               <Ionicons
                 name={feesExpanded ? 'chevron-up' : 'chevron-down'}

@@ -285,7 +285,7 @@ const currency = 'ILS';
                     hasMultipleFees && pressed && { opacity: 0.85 },
                   ]}
                 >
-                  <Text style={styles.detailValue}>{formatMoney(service.fees, currency)}</Text>
+                  <Text style={styles.detailValue}>{formatMoney(service.fees)}</Text>
                   {hasMultipleFees && (
                     <Ionicons
                       name={feesExpanded ? 'chevron-up' : 'chevron-down'}
