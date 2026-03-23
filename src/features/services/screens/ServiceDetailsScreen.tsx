@@ -32,8 +32,7 @@ export function ServiceDetailsScreen({ navigation, route }: Props) {
     [service?.feesBreakdown]
   );
   const hasMultipleFees = feesBreakdown.length > 1;
-  const currency = 'JOD';
-
+const currency = 'ILS';
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -135,7 +134,7 @@ export function ServiceDetailsScreen({ navigation, route }: Props) {
                     {getFeeDisplayDescription(fee.description, i18n.language) || t('services.fees')}
                   </Text>
                   <Text style={[styles.feeAmount, { color: colors.text }]}>
-                    {formatMoney(fee.amount, 'JOD')}
+                    {formatMoney(fee.amount)}
                   </Text>
                 </View>
               ))}

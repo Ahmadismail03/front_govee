@@ -1,7 +1,6 @@
 import { getApiClient, getMockApiClient } from '../../../core/api/axiosClient';
 import type { Service, ServiceFeeItem } from '../../../core/domain/service';
 import type { TimeSlot } from '../../../core/domain/timeSlot';
-import { convertToJod } from '../../../shared/utils/format';
 
 type BackendServiceListItem = {
   id: string;
@@ -45,8 +44,8 @@ function mapFeesBreakdown(svc: BackendServiceDetails): ServiceFeeItem[] | undefi
   if (!Array.isArray(svc.fees) || svc.fees.length === 0) return undefined;
   return svc.fees.map((f) => ({
     description: f.description ?? null,
-    amount: convertToJod(parseFeeAmount(f.amount), f.currency ?? svc.currency ?? 'JOD'),
-    currency: 'JOD'
+    amount: parseFeeAmount(f.amount),
+    currency: f.currency ?? svc.currency ?? 'ILS'
   }));
 }
 
@@ -56,16 +55,14 @@ function mapBackendServiceToDomain(svc: BackendServiceDetails): Service {
     : [];
 
   const feesBreakdown = mapFeesBreakdown(svc);
-  const currency = 'JOD';
-
+const currency = 'ILS';
   const feesFromBreakdown = feesBreakdown?.reduce((sum, f) => sum + (Number.isFinite(f.amount) ? f.amount : 0), 0);
   const feesRaw = svc.price;
   const parsedPrice = typeof feesRaw === 'number' ? feesRaw : feesRaw != null ? Number(feesRaw) : NaN;
   const hasBreakdown = Array.isArray(feesBreakdown) && feesBreakdown.length > 0;
   const hasPrice = Number.isFinite(parsedPrice);
-  const feesFromPriceJod = hasPrice ? convertToJod(parsedPrice, svc.currency ?? 'JOD') : 0;
-  const fees = hasBreakdown ? feesFromBreakdown ?? 0 : feesFromPriceJod;
-
+const feesFromPrice = hasPrice ? parsedPrice : 0;
+const fees = hasBreakdown ? (feesFromBreakdown ?? 0) : feesFromPrice;
   return {
     id: svc.id,
     name: svc.canonicalName,

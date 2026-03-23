@@ -31,8 +31,7 @@ export function ServiceCard({ service, onPress }: Props) {
   );
 
   const hasMultipleFees = feesBreakdown.length > 1;
-  const currency = 'JOD';
-
+const currency = 'ILS';
   const imageSource = getServiceImageSource(service);
 
   const styles = React.useMemo(
@@ -309,7 +308,7 @@ export function ServiceCard({ service, onPress }: Props) {
                         <Text style={[styles.feeDesc, { color: colors.textSecondary }]} numberOfLines={2}>
                           {getFeeDisplayDescription(fee.description, i18n.language) || t('services.fees')}
                         </Text>
-                        <Text style={[styles.feeAmount, { color: colors.text }]}> {formatMoney(fee.amount, 'JOD')} </Text>
+                        <Text style={[styles.feeAmount, { color: colors.text }]}> {formatMoney(fee.amount)} </Text>
                       </View>
                     ))}
                   </View>
