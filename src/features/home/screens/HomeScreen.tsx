@@ -126,6 +126,52 @@ const gridStyles = StyleSheet.create({
   },
 });
 
+// ─── Floating Voice FAB ───────────────────────────────────────────────────────
+function VoiceFAB({ onPress, isRtl }: { onPress: () => void; isRtl: boolean }) {
+  return (
+    <View
+      style={[
+        fabStyles.wrapper,
+        isRtl ? fabStyles.wrapperLeft : fabStyles.wrapperRight,
+      ]}
+      pointerEvents="box-none"
+    >
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.85}
+        style={fabStyles.fab}
+        accessibilityRole="button"
+        accessibilityLabel="Voice Assistant"
+      >
+        <Ionicons name="mic-outline" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const fabStyles = StyleSheet.create({
+  wrapper: {
+    position: 'absolute',
+    bottom: 12, // lower so it sits near the bottom navigation
+    zIndex: 20,
+  },
+  wrapperRight: {
+    right: 12,
+  },
+  wrapperLeft: {
+    left: 12,
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#C4161C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.lg,
+  },
+});
+
 // ─── Service Card ─────────────────────────────────────────────────────────────
 function ServiceCard({
   service,
@@ -744,6 +790,7 @@ export function HomeScreen({ navigation }: Props) {
           </>
         }
       />
+      <VoiceFAB onPress={() => setVoiceOpen(true)} isRtl={isRtl} />
     </View>
   );
 }
