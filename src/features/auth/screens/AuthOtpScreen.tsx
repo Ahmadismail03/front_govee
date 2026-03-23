@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, I18nManager, StyleSheet, Text, View, Image, TouchableOpacity, TextInput } from 'react-native';
+import { Alert, StyleSheet, Text, View, Image, TouchableOpacity, TextInput } from 'react-native';
+import { useRtl } from '../../../core/i18n/useRtl';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AuthOtp'>;
 export function AuthOtpScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const themeColors = useThemeColors();
+  const { isRtl } = useRtl();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const verifyOtp = useAuthStore((s) => s.verifyOtp);
@@ -65,7 +67,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
 
       // Numbers are LTR even in RTL UI; our inputs are rendered in a row-reverse container.
       // Fix: in RTL, reverse digits before joining so we send the intended OTP string.
-      const otpString = (I18nManager.isRTL ? [...otp].reverse() : otp).join('');
+      const otpString = (isRtl ? [...otp].reverse() : otp).join('');
       if (!otpString || otpString.trim().length !== 6 || !/^\d{6}$/.test(otpString)) {
         Alert.alert(t('auth.errorTitle'), t('auth.otpError'));
         return;

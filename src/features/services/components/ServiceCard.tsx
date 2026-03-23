@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { I18nManager, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRtl } from '../../../core/i18n/useRtl';
 import type { Service } from '../../../core/domain/service';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ type Props = {
 export function ServiceCard({ service, onPress }: Props) {
   const { t, i18n } = useTranslation();
   const colors = useThemeColors();
+  const { isRtl } = useRtl();
   const [feesExpanded, setFeesExpanded] = useState(false);
 
   const displayName = useMemo(() => getServiceDisplayName(service, i18n.language), [service, i18n.language]);
@@ -251,7 +253,7 @@ const currency = 'ILS';
           </Text>
           <Pressable onPress={onPress} style={styles.detailsButton}>
             <Ionicons
-              name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
+              name={isRtl ? 'chevron-back' : 'chevron-forward'}
               size={20}
               color={colors.primary}
             />

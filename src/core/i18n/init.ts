@@ -76,13 +76,19 @@ export async function initI18n(): Promise<void> {
   const wantRtl = shouldUseRtl(language);
 
   if (I18nManager.isRTL !== wantRtl) {
-    // Direction mismatch — apply and reload so the native layout engine picks it up
     I18nManager.forceRTL(wantRtl);
     try {
       await setSecureItem(StorageKeys.language, language);
     } catch { /* ignore */ }
-    // Slight delay so the save completes before the reload
-    setTimeout(reloadApp, 300);
+
+    // In Expo Go, forceRTL() does NOT persist through JS-only reloads —
+    // I18nManager.isRTL stays false even after the call. Reloading in that
+    // case creates an infinite reload loop. We only reload when the native
+    // layer actually accepted the change (production / dev-client).
+    // For Expo Go the root View's `direction` style prop handles RTL layout.
+    if (I18nManager.isRTL === wantRtl) {
+      setTimeout(reloadApp, 300);
+    }
   }
 }
 

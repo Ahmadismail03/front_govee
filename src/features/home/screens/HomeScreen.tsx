@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   FlatList,
-  I18nManager,
   Image,
   Pressable,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useRtl } from '../../../core/i18n/useRtl';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -333,6 +333,7 @@ export function HomeScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const { width } = useWindowDimensions();
+  const { isRtl } = useRtl();
 
   const carouselRef = useRef<FlatList<Promo> | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -760,7 +761,7 @@ export function HomeScreen({ navigation }: Props) {
                     {t('home.viewAll') ?? 'عرض الكل'}
                   </Text>
                   <Ionicons
-                    name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
+                    name={isRtl ? 'chevron-back' : 'chevron-forward'}
                     size={12}
                     color="#C4161C"
                   />

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { FlatList, I18nManager, Pressable, StyleSheet, Text, TextInput, View, ImageBackground } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ImageBackground } from 'react-native';
+import { useRtl } from '../../../core/i18n/useRtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -18,6 +19,7 @@ type Props = BottomTabScreenProps<TabsParamList, 'ServicesTab'>;
 
 export function ServicesListScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
+  const { isRtl } = useRtl();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
 
@@ -196,7 +198,7 @@ export function ServicesListScreen({ navigation }: Props) {
                 style={[styles.pageNavButton, page <= 1 && styles.pageNavButtonDisabled]}
               >
                 <Ionicons
-                  name={I18nManager.isRTL ? 'chevron-forward' : 'chevron-back'}
+                  name={isRtl ? 'chevron-forward' : 'chevron-back'}
                   size={20}
                   color={page <= 1 ? colors.textTertiary : colors.text}
                 />
@@ -232,7 +234,7 @@ export function ServicesListScreen({ navigation }: Props) {
                 style={[styles.pageNavButton, page >= totalPages && styles.pageNavButtonDisabled]}
               >
                 <Ionicons
-                  name={I18nManager.isRTL ? 'chevron-back' : 'chevron-forward'}
+                  name={isRtl ? 'chevron-back' : 'chevron-forward'}
                   size={20}
                   color={page >= totalPages ? colors.textTertiary : colors.text}
                 />

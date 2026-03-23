@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { I18nManager, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { useRtl } from '../../../core/i18n/useRtl';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,6 +56,7 @@ export function SettingsScreen({ navigation }: Props) {
   const current = getCurrentLanguage();
 
   const colors = useThemeColors();
+  const { isRtl } = useRtl();
 
   const styles = React.useMemo(
     () =>
@@ -142,10 +144,10 @@ export function SettingsScreen({ navigation }: Props) {
           height: 26,
           borderRadius: borderRadius.full,
           backgroundColor: colors.textInverse,
-          transform: I18nManager.isRTL ? [{ translateX: 20 }] : [{ translateX: 0 }],
+          transform: isRtl ? [{ translateX: 20 }] : [{ translateX: 0 }],
         },
         toggleThumbActive: {
-          transform: I18nManager.isRTL ? [{ translateX: 0 }] : [{ translateX: 20 }],
+          transform: isRtl ? [{ translateX: 0 }] : [{ translateX: 20 }],
         },
         optionsColumn: {
           gap: spacing.xs,
@@ -212,7 +214,7 @@ export function SettingsScreen({ navigation }: Props) {
           color: colors.error,
         },
       }),
-    [colors]
+    [colors, isRtl]
   );
 
   return (

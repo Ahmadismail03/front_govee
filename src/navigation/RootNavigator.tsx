@@ -64,7 +64,7 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer key={`root-nav-${rtl ? 'rtl' : 'ltr'}`} ref={navigationRef}>
-      <View style={styles.root}>
+      <View style={[styles.root, { direction: rtl ? 'rtl' : 'ltr' }]}>
         <Stack.Navigator
           screenOptions={{
             headerStyle: {
@@ -295,9 +295,9 @@ export function RootNavigator() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    // No direction property here. direction:'rtl' on a root View cascades
-    // through Yoga and double-negates explicit flexDirection:'row-reverse'
-    // styles in child components, producing LTR layout in Arabic mode.
+    // direction is set dynamically via inline style (rtl ? 'rtl' : 'ltr').
+    // This is the Yoga-level RTL that works even in Expo Go where
+    // I18nManager.forceRTL() doesn't persist across JS-only reloads.
   },
   headerRight: {
     flexDirection: 'row',
