@@ -15,7 +15,6 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import type { TabsParamList } from '../../../navigation/types';
-import { Screen } from '../../../shared/ui/Screen';
 import { useHomeStore } from '../store/useHomeStore';
 import { LoadingView } from '../../../shared/ui/LoadingView';
 import { ErrorView } from '../../../shared/ui/ErrorView';
@@ -51,11 +50,9 @@ type QuickAction = {
 function ActionGridCard({
   item,
   colors,
-  isRtl,
 }: {
   item: QuickAction;
   colors: ReturnType<typeof useThemeColors>;
-  isRtl: boolean;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -90,16 +87,13 @@ function ActionGridCard({
           },
         ]}
       >
-        {/* Icon bubble — always on the leading edge (native RTL handles flip) */}
-        <View style={[gridStyles.iconBubble, {
-          backgroundColor: item.bgColor,
-          alignSelf: 'flex-start',
-        }]}>
+        {/* Icon on top-right */}
+        <View style={[gridStyles.iconBubble, { backgroundColor: item.bgColor, alignSelf: 'flex-start' }]}>
           <Ionicons name={item.icon as any} size={22} color={item.color} />
         </View>
-        {/* Label */}
+        {/* Title below icon, right-aligned for Arabic */}
         <Text
-          style={[gridStyles.cardTitle, { color: colors.text, textAlign: isRtl ? 'right' : 'left' }]}
+          style={[gridStyles.cardTitle, { color: colors.text, textAlign: 'left' }]}
           numberOfLines={2}
         >
           {item.title}
@@ -128,78 +122,7 @@ const gridStyles = StyleSheet.create({
   cardTitle: {
     fontSize: typography.sm,
     fontWeight: typography.semibold,
-    flex: 1,
-  },
-});
-
-// ─── Pulsing Voice FAB ────────────────────────────────────────────────────────
-function VoiceFAB({ onPress }: { onPress: () => void }) {
-  const pulse = useRef(new Animated.Value(1)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.55)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(pulse, { toValue: 1.6, duration: 950, useNativeDriver: true }),
-          Animated.timing(pulseOpacity, { toValue: 0, duration: 950, useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(pulse, { toValue: 1, duration: 0, useNativeDriver: true }),
-          Animated.timing(pulseOpacity, { toValue: 0.55, duration: 0, useNativeDriver: true }),
-        ]),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse, pulseOpacity]);
-
-  return (
-    <View style={[fabStyles.wrapper, { end: 20 }]} pointerEvents="box-none">
-      <Animated.View
-        style={[
-          fabStyles.ring,
-          { transform: [{ scale: pulse }], opacity: pulseOpacity },
-        ]}
-      />
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.82}
-        style={fabStyles.fab}
-        accessibilityRole="button"
-        accessibilityLabel="Voice Assistant"
-      >
-        <Ionicons name="mic-outline" size={26} color="#FFFFFF" />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const fabStyles = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    bottom: 28,
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 99,
-  },
-  ring: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#C4161C',
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#C4161C',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.lg,
+    width: '100%',
   },
 });
 
@@ -301,21 +224,34 @@ const serviceCardStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.12)',
   },
   content: {
-    padding: spacing.md,
+    position: 'relative',
+    paddingTop: spacing.md,
+    paddingRight: spacing.md,
+    paddingBottom: spacing.xl + spacing.md,
+    paddingLeft: spacing.md,
     gap: spacing.sm,
+    alignItems: 'flex-start',
   },
   title: {
     fontSize: typography.base,
     fontWeight: typography.semibold,
+    textAlign: 'left',
+    alignSelf: 'flex-start',
+    width: '100%',
   },
   description: {
     fontSize: typography.sm,
     lineHeight: typography.sm * 1.55,
+    textAlign: 'left',
+    alignSelf: 'flex-start',
+    width: '100%',
   },
   footer: {
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
+    position: 'absolute',
+    left: spacing.md,
+    bottom: spacing.md,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
   },
   badge: {
     backgroundColor: '#FFE5E6',
@@ -502,18 +438,18 @@ export function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Screen>
-        <FlatList
-          data={[]}
-          renderItem={() => null}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: spacing.lg,
-            paddingTop: spacing.md,
-            paddingBottom: 100, // space above FAB
-          }}
-          ListHeaderComponent={
-            <>
+      <FlatList
+        data={[]}
+        renderItem={() => null}
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.lg,
+        }}
+        ListHeaderComponent={
+          <>
               {/* ── Hero Carousel ────────────────────────────── */}
               <View
                 style={{
@@ -601,7 +537,7 @@ export function HomeScreen({ navigation }: Props) {
                         </View>
 
                         {/* Text column */}
-                        <View style={{ flex: 1 }}>
+                        <View style={{ flex: 1, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
                           {/* Title */}
                           <Text
                             style={{
@@ -665,32 +601,33 @@ export function HomeScreen({ navigation }: Props) {
                 {/* Section header */}
                 <View
                   style={{
-                    flexDirection: isRtl ? 'row-reverse' : 'row',
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
+                    justifyContent: 'flex-start',
                     marginBottom: spacing.md,
+                    gap: spacing.sm,
+                    width: '100%',
                   }}
                 >
+                  {/* Vertical marker (RTL) */}
+                  <View
+                    style={{
+                      width: 4,
+                      height: 22,
+                      borderRadius: 2,
+                      backgroundColor: '#C4161C',
+                    }}
+                  />
                   <Text
                     style={{
                       fontSize: typography.base,
                       fontWeight: typography.bold,
                       color: colors.text,
-                      textAlign: isRtl ? 'right' : 'left',
-                      flex: 1,
+                      textAlign: 'right',
                     }}
                   >
                     {t('home.quickActions')}
                   </Text>
-                  {/* Red accent pill */}
-                  <View
-                    style={{
-                      height: 4,
-                      width: 32,
-                      borderRadius: 2,
-                      backgroundColor: '#C4161C',
-                    }}
-                  />
                 </View>
 
                 {/* 2-column rows */}
@@ -708,7 +645,6 @@ export function HomeScreen({ navigation }: Props) {
                           key={item.key}
                           item={item}
                           colors={colors}
-                          isRtl={isRtl}
                         />
                       ))}
                       {/* Fill empty slot in last row if odd count */}
@@ -721,36 +657,49 @@ export function HomeScreen({ navigation }: Props) {
               {/* ── Section Divider ─────────────────────────── */}
               <View
                 style={{
-                  flexDirection: isRtl ? 'row-reverse' : 'row',
-                  alignItems: 'center',
                   marginVertical: spacing.xl,
-                  gap: spacing.md,
+                  minHeight: 40,
+                  position: 'relative',
+                  width: '100%',
+                  justifyContent: 'center',
                 }}
               >
                 <View
                   style={{
-                    width: 4,
-                    height: 22,
-                    borderRadius: 2,
-                    backgroundColor: '#C4161C',
-                  }}
-                />
-                <Text
-                  style={{
-                    fontSize: typography.base,
-                    fontWeight: typography.bold,
-                    color: colors.text,
-                    flex: 1,
-                    textAlign: isRtl ? 'right' : 'left',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.sm,
+                    alignSelf: 'flex-start',
+                    maxWidth: '70%',
                   }}
                 >
-                  {t('home.featuredServices') ?? 'الخدمات الشائعة'}
-                </Text>
+                  <View
+                    style={{
+                      width: 4,
+                      height: 22,
+                      borderRadius: 2,
+                      backgroundColor: '#C4161C',
+                    }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: typography.base,
+                      fontWeight: typography.bold,
+                      color: colors.text,
+                      textAlign: 'left',
+                    }}
+                  >
+                    {t('home.featuredServices') ?? 'الخدمات الشائعة'}
+                  </Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => navigation.navigate('ServicesTab')}
                   accessibilityRole="button"
                   style={{
-                    flexDirection: isRtl ? 'row-reverse' : 'row',
+                    position: 'absolute',
+                    left: 0,
+                    top: 2,
+                    flexDirection: 'row-reverse',
                     alignItems: 'center',
                     gap: 4,
                     borderWidth: 1.5,
@@ -770,7 +719,7 @@ export function HomeScreen({ navigation }: Props) {
                     {t('home.viewAll') ?? 'عرض الكل'}
                   </Text>
                   <Ionicons
-                    name={isRtl ? 'chevron-back' : 'chevron-forward'}
+                    name="chevron-back"
                     size={12}
                     color="#C4161C"
                   />
@@ -792,13 +741,9 @@ export function HomeScreen({ navigation }: Props) {
                   ))}
                 </View>
               ) : null}
-            </>
-          }
-        />
-      </Screen>
-
-      {/* ── Persistent Voice FAB ──────────────────────────── */}
-      <VoiceFAB onPress={() => setVoiceOpen(true)} />
+          </>
+        }
+      />
     </View>
   );
 }

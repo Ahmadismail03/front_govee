@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { TabsParamList } from './types';
 import { useTranslation } from 'react-i18next';
@@ -9,13 +9,12 @@ import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { ServicesListScreen } from '../features/services/screens/ServicesListScreen';
 import { AppointmentsListScreen } from '../features/appointments/screens/AppointmentsListScreen';
 import { useThemeColors } from '../shared/theme/useTheme';
-import { spacing } from '../shared/theme/tokens';
+import { spacing, typography } from '../shared/theme/tokens';
 import { RequireAuth } from './RequireAuth';
 import { HeaderMenuButton } from '../shared/ui/HeaderMenu';
 import { HeaderLogo } from '../shared/ui/HeaderLogo';
 import { ProfileScreen } from '../features/profile/screens/ProfileScreen';
 import { useVoiceStore } from '../features/voice/store/useVoiceStore';
-import { useRtl } from '../core/i18n/useRtl';
 
 const Tab = createBottomTabNavigator<TabsParamList>();
 
@@ -38,7 +37,6 @@ export function MainTabs() {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const setVoiceOpen = useVoiceStore((s) => s.setIsOpen);
-  const { isRtl } = useRtl();
 
   return (
     <Tab.Navigator
@@ -48,46 +46,41 @@ export function MainTabs() {
           backgroundColor: colors.primary,
           elevation: 0,
           shadowOpacity: 0,
-          height: 112,
+          height: 96,
+        },
+        headerShadowVisible: false,
+        headerLeftContainerStyle: {
+          paddingStart: spacing.xs,
+        },
+        headerRightContainerStyle: {
+          paddingEnd: spacing.xs,
         },
         headerTintColor: colors.headerText,
         headerTitleStyle: {
           fontWeight: '700',
         },
-        headerTitleAlign: isRtl ? 'left' : 'center',
-        headerTitleContainerStyle: isRtl ? { right: 56, left: 96 } : undefined,
+        // We render a custom title block on the right side for Arabic,
+        // so the default centered title must be hidden.
+        headerTitle: () => null,
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
+          borderTopWidth: 1,
+          elevation: 8,
+          shadowOpacity: 0.08,
+          height: 62,
+          paddingTop: 6,
+          paddingBottom: 6,
+        },
+        sceneStyle: {
+          backgroundColor: colors.background,
         },
         tabBarIcon: ({ color, size, focused }) => {
           if (route.name === 'HomeTab') {
-            const homeIconSize = Math.round(size * 1.6);
-            const circleSize = homeIconSize + 26;
-            const backgroundColor = focused ? colors.primaryLight : 'transparent';
-            const shadowStyle = focused
-              ? [styles.homeCircleFocused, { shadowColor: colors.primary }]
-              : styles.homeCircleUnfocused;
-
             const name: IoniconName = focused ? 'home' : 'home-outline';
-            return (
-              <View
-                style={[
-                  styles.homeCircle,
-                  {
-                    width: circleSize,
-                    height: circleSize,
-                    borderRadius: circleSize / 2,
-                    backgroundColor,
-                  },
-                  shadowStyle,
-                ]}
-              >
-                <Ionicons name={name} size={homeIconSize} color={color} />
-              </View>
-            );
+            return <Ionicons name={name} size={size} color={color} />;
           }
 
           let name: IoniconName;
@@ -102,27 +95,28 @@ export function MainTabs() {
           }
           return <Ionicons name={name} size={size} color={color} />;
         },
-        // Arabic UX: logo fixed at far left, menu at the right.
-        headerLeft: () =>
-          isRtl ? (
-            <View style={styles.headerMenuSide}>
-              <HeaderMenuButton />
-            </View>
-          ) : (
-            <View style={styles.headerLogoSide}>
-              <HeaderLogo />
-            </View>
-          ),
-        headerRight: () =>
-          isRtl ? (
-            <View style={styles.headerLogoSide}>
-              <HeaderLogo />
-            </View>
-          ) : (
-            <View style={styles.headerMenuSide}>
-              <HeaderMenuButton />
-            </View>
-          ),
+        // Flipped as requested: title+menu on the left, logo on the right.
+        headerLeft: () => (
+          <View style={styles.headerRightCluster}>
+            <HeaderMenuButton />
+            <Text style={[styles.headerRightTitle, { color: colors.headerText }]}>
+              {route.name === 'HomeTab'
+                ? t('tabs.home')
+                : route.name === 'ServicesTab'
+                  ? t('tabs.services')
+                  : route.name === 'AppointmentsTab'
+                    ? t('tabs.appointments')
+                    : route.name === 'InboxTab'
+                      ? t('tabs.voice')
+                      : t('tabs.profile')}
+            </Text>
+          </View>
+        ),
+        headerRight: () => (
+          <View style={styles.headerLogoSide}>
+            <HeaderLogo />
+          </View>
+        ),
       })}
     >
       <Tab.Screen name="ServicesTab" component={ServicesListScreen} options={{ title: t('tabs.services') }} />
@@ -179,27 +173,18 @@ const styles = StyleSheet.create({
   headerLogoSide: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.xs,
+    marginHorizontal: 0,
   },
-  headerMenuSide: {
+  headerRightCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.xs,
+    gap: 4,
+    marginHorizontal: 0,
   },
-  homeCircle: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  homeCircleFocused: {
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.14,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  homeCircleUnfocused: {
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
+  headerRightTitle: {
+    fontSize: typography.base,
+    fontWeight: typography.semibold,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
 });

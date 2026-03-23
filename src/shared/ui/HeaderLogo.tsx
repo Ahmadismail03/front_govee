@@ -13,14 +13,14 @@ export function HeaderLogo() {
 
 const styles = StyleSheet.create({
   root: {
-    width: 96,
-    height: 96,
+    width: 58,
+    height: 58,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 4,
+    marginHorizontal: 2,
   },
   logo: {
-    width: 92,
-    height: 92,
+    width: 54,
+    height: 54,
   },
 });

@@ -16,7 +16,7 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
  // const keyboardVerticalOffset = Platform.OS === 'ios' ? Math.max(headerHeight, insets.top) : 0;
 const keyboardVerticalOffset =
   Platform.OS === 'ios' ? insets.top : 0;
-  const bottomPad = insets.bottom + spacing.xxxl;
+  const bottomPad = insets.bottom + spacing.md;
 
   const styles = React.useMemo(
     () =>
@@ -40,13 +40,15 @@ const keyboardVerticalOffset =
         content: {
           flex: 1,
           paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
+          paddingTop: 0,
+          paddingBottom: spacing.md,
           gap: spacing.lg,
           zIndex: 1,
         },
         scrollContent: {
           paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
+          paddingTop: 0,
+          paddingBottom: spacing.md,
           gap: spacing.lg,
         },
       }),
@@ -72,7 +74,7 @@ const keyboardVerticalOffset =
 
   if (!keyboardAvoiding) {
     return (
-      <SafeAreaView style={styles.root}>
+      <SafeAreaView style={styles.root} edges={['left', 'right']}>
         <Image 
           source={require('../../../assets/logo.png')} 
           style={styles.watermark} 
@@ -84,7 +86,7 @@ const keyboardVerticalOffset =
   }
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['left', 'right']}>
       <Image 
         source={require('../../../assets/logo.png')} 
         style={styles.watermark} 
