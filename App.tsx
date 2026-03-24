@@ -8,7 +8,9 @@ export default function App() {
   const colors = useThemeColors();
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" backgroundColor={colors.primary} />
+      {/* translucent + transparent background = required for edgeToEdgeEnabled:true.
+          The header's own backgroundColor covers the status-bar area on all screens. */}
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <AppRoot />
     </SafeAreaProvider>
   );

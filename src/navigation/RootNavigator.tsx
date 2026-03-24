@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RootStackParamList } from './types';
 import { MainTabs } from './TabsNavigator';
 import { ServiceDetailsScreen } from '../features/services/screens/ServiceDetailsScreen';
@@ -24,6 +25,7 @@ import { useThemeColors } from '../shared/theme/useTheme';
 import { HeaderMenuButton } from '../shared/ui/HeaderMenu';
 import { HeaderLogo } from '../shared/ui/HeaderLogo';
 import { HeaderTitle } from '../shared/ui/HeaderTitle';
+import { RtlStackHeaderRight } from '../shared/ui/RtlStackHeaderRight';
 import { ContactUsScreen } from '../features/support/screens/ContactUsScreen';
 import { TechnicalSupportScreen } from '../features/support/screens/TechnicalSupportScreen';
 import { ReportProblemScreen } from '../features/support/screens/ReportProblemScreen';
@@ -33,6 +35,7 @@ import { VoiceAssistantSheet } from '../features/voice/components/VoiceAssistant
 import { useVoiceStore } from '../features/voice/store/useVoiceStore';
 import { useAuthStore } from '../features/auth/store/useAuthStore';
 import { useRtl } from '../core/i18n/useRtl';
+import { spacing } from '../shared/theme/tokens';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -40,6 +43,7 @@ export function RootNavigator() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const colors = useThemeColors();
   const { isRtl: rtl } = useRtl();
+  const insets = useSafeAreaInsets();
 
   // ── Reopen voice sheet after successful OTP auth ────────────────────────
   const authStatus = useAuthStore((s) => s.authStatus);
@@ -71,19 +75,39 @@ export function RootNavigator() {
             return {
               headerStyle: {
                 backgroundColor: colors.primary,
-                height: 112,
+                // No hardcoded height — React Navigation v7 owns the calculation.
               } as any,
+              // Explicit top inset so every stack screen positions its header
+              // content below the status bar / notch on all devices.
+              headerStatusBarHeight: insets.top,
               headerTintColor: colors.headerText,
               headerTitleStyle: {
                 fontWeight: '700',
                 marginTop: 0,
               } as any,
-              headerTitleAlign: rtl ? 'left' : 'center',
+              headerTitleAlign: rtl && !isMainTabs ? 'left' : 'center',
               headerBackTitleVisible: false,
-              headerTitle: ({ children }) => (
-                <HeaderTitle title={typeof children === 'string' ? children : undefined} />
-              ),
-              // Menu only for top-level tabs. Sub-pages use default back arrow.
+              // RTL sub-screens: hide the native iOS back button (which always
+              // points ← in iOS Expo Go because forceRTL doesn't persist there).
+              // Title + RtlStackHeaderRight (chevron) live in headerRight so Arabic
+              // stays visible on Android; LTR keeps centered HeaderTitle + native back.
+              headerBackVisible: !(rtl && !isMainTabs),
+              headerTitle:
+                rtl && !isMainTabs
+                  ? () => null
+                  : ({ children }) => (
+                      <HeaderTitle title={typeof children === 'string' ? children : undefined} />
+                    ),
+              headerRightContainerStyle:
+                rtl && !isMainTabs
+                  ? {
+                      paddingEnd: spacing.xs,
+                      maxWidth: '78%',
+                    }
+                  : undefined,
+              // Main tabs: logo + menu on the left.
+              // Sub-screens LTR: undefined → native default back arrow (left).
+              // Sub-screens RTL: title + back chevron in headerRight (reading order).
               headerLeft: isMainTabs
                 ? () => (
                     <View style={styles.headerRight}>
@@ -92,7 +116,11 @@ export function RootNavigator() {
                     </View>
                   )
                 : undefined,
-              headerRight: isMainTabs ? () => null : undefined,
+              headerRight: isMainTabs
+                ? () => null
+                : rtl
+                ? () => <RtlStackHeaderRight />
+                : undefined,
             };
           }}
         >
@@ -199,7 +227,13 @@ export function RootNavigator() {
           <Stack.Screen
             name="BookingSuccess"
             component={BookingSuccessScreen}
-            options={{ headerBackVisible: false, gestureEnabled: false }}
+            options={{
+              title: '',
+              headerBackVisible: false,
+              gestureEnabled: false,
+              headerLeft: () => null,
+              headerRight: () => null,
+            }}
           />
 
           <Stack.Screen name="AppointmentDetails">

@@ -8,7 +8,7 @@ import { formatMoney } from '../../../shared/utils/format';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { getServiceImageSource } from '../utils/serviceImages';
-import { getFeeDisplayDescription, getServiceDisplayDescription, getServiceDisplayName } from '../utils/localization';
+import { getFeeDisplayDescription, getServiceDisplayName } from '../utils/localization';
 
 type Props = {
   service: Service;
@@ -22,10 +22,6 @@ export function ServiceCard({ service, onPress }: Props) {
   const [feesExpanded, setFeesExpanded] = useState(false);
 
   const displayName = useMemo(() => getServiceDisplayName(service, i18n.language), [service, i18n.language]);
-  const displayDescription = useMemo(
-    () => getServiceDisplayDescription(service, i18n.language),
-    [service, i18n.language]
-  );
 
   const feesBreakdown = useMemo(
     () => (Array.isArray(service.feesBreakdown) ? service.feesBreakdown : []),
@@ -80,14 +76,18 @@ const currency = 'ILS';
           color: colors.primary,
         },
         content: {
-          padding: spacing.lg,
+          paddingTop: spacing.lg,
+          paddingBottom: spacing.lg,
+          paddingEnd: spacing.lg,
+          paddingStart: 0,
           gap: spacing.md,
         },
         categoryBadge: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.xs,
-          alignSelf: 'flex-start',
+          // RTL: flex-end = physical left — pill at far left, not auto
+          alignSelf: 'flex-end',
           backgroundColor: colors.primaryLight,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.xs,
@@ -97,33 +97,25 @@ const currency = 'ILS';
           fontSize: typography.xs,
           fontWeight: typography.semibold,
           color: colors.primary,
+          textAlign: 'left',
         },
         titleRow: {
+          width: '100%',
           flexDirection: 'row',
           alignItems: 'flex-start',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-start',
           gap: spacing.sm,
         },
         name: {
-          flex: 1,
+          flexShrink: 1,
           fontSize: typography.xl,
           fontWeight: typography.bold,
           color: colors.text,
           lineHeight: typography.xl * typography.tight,
+          textAlign: 'right',
         },
         detailsButton: {
           padding: spacing.xs,
-        },
-        descriptionContainer: {
-          backgroundColor: colors.backgroundSecondary,
-          padding: spacing.md,
-          borderRadius: borderRadius.md,
-          marginTop: spacing.xs,
-        },
-        description: {
-          fontSize: typography.sm,
-          color: colors.textSecondary,
-          lineHeight: typography.sm * typography.relaxed,
         },
         detailsContainer: {
           marginTop: spacing.xs,
@@ -154,22 +146,31 @@ const currency = 'ILS';
         detailTextContainer: {
           flex: 1,
           gap: spacing.xs,
+          minWidth: 0,
+          direction: 'ltr',
+          alignItems: 'flex-end',
         },
         detailLabel: {
           fontSize: typography.xs,
           color: colors.textTertiary,
           fontWeight: typography.medium,
+          textAlign: 'right',
+          writingDirection: 'rtl',
+          alignSelf: 'stretch',
         },
         detailValue: {
           fontSize: typography.sm,
           color: colors.text,
           fontWeight: typography.semibold,
+          textAlign: 'right',
+          writingDirection: 'rtl',
         },
         feesValueRow: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.xs,
-          alignSelf: 'flex-start',
+          alignSelf: 'stretch',
+          justifyContent: 'flex-end',
         },
         feesDropdown: {
           borderWidth: 1,
@@ -222,6 +223,8 @@ const currency = 'ILS';
       style={({ pressed }) => [
         styles.card,
         pressed && styles.cardPressed,
+        // Force RTL so text is at the far RIGHT and chevron at the far LEFT.
+        { direction: 'rtl' } as any,
       ]}
       onPress={onPress}
       accessibilityRole="button"
@@ -238,19 +241,8 @@ const currency = 'ILS';
       </View>
       
       <View style={styles.content}>
-        {/* Category Badge */}
-        {service.category && (
-          <View style={styles.categoryBadge}>
-            <Ionicons name="folder-outline" size={14} color={colors.primary} />
-            <Text style={styles.categoryText}>{service.category}</Text>
-          </View>
-        )}
-        
-        {/* Service Title */}
+        {/* Service Title — chevron first so it anchors to far right in RTL */}
         <View style={styles.titleRow}>
-          <Text style={styles.name} numberOfLines={2}>
-            {displayName}
-          </Text>
           <Pressable onPress={onPress} style={styles.detailsButton}>
             <Ionicons
               name={isRtl ? 'chevron-back' : 'chevron-forward'}
@@ -258,14 +250,17 @@ const currency = 'ILS';
               color={colors.primary}
             />
           </Pressable>
-        </View>
-        
-        {/* Service Description */}
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.description} numberOfLines={4}>
-            {displayDescription}
+          <Text style={styles.name} numberOfLines={2}>
+            {displayName}
           </Text>
         </View>
+
+        {service.category && (
+          <View style={styles.categoryBadge}>
+            <Ionicons name="folder-outline" size={14} color={colors.primary} />
+            <Text style={styles.categoryText}>{service.category}</Text>
+          </View>
+        )}
 
         {/* Service Details */}
         <View style={styles.detailsContainer}>

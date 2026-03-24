@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View, Image, TouchableOpacity, TextInput } from 'react-native';
 import { useRtl } from '../../../core/i18n/useRtl';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -24,6 +24,10 @@ export function AuthOtpScreen({ navigation, route }: Props) {
 
   const [rememberDevice, setRememberDevice] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('auth.otpTitle') });
+  }, [navigation, t, isRtl]);
 
   const handleOtpChange = (value: string, index: number) => {
     if (value.length > 1) {

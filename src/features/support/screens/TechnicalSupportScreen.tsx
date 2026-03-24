@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -7,16 +7,27 @@ import { ContactCard } from '../../../shared/ui/HeaderMenu';
 import { View, StyleSheet, Image, Text } from 'react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { useRtl } from '../../../core/i18n/useRtl';
+import { RtlPhysicalRightBlock } from '../../../shared/ui/RtlPhysicalRightBlock';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TechnicalSupport'>;
 
 export function TechnicalSupportScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const colors = useThemeColors();
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('support.technical.title') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('support.technical.title') });
+  }, [navigation, t, isRtl]);
+
+  const textDirStyle = React.useMemo(
+    () =>
+      isRtl
+        ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
+        : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const }),
+    [isRtl]
+  );
 
   const styles = React.useMemo(
     () =>
@@ -41,19 +52,22 @@ export function TechnicalSupportScreen({ navigation }: Props) {
           fontWeight: typography.bold,
           color: colors.text,
           marginBottom: spacing.xs,
+          alignSelf: 'stretch',
         },
         heroSubtitle: {
           fontSize: typography.sm,
           color: colors.textSecondary,
           lineHeight: typography.sm * typography.relaxed,
+          alignSelf: 'stretch',
         },
         footer: {
           marginTop: spacing.xl,
-          alignItems: 'center',
+          alignSelf: 'stretch',
         },
         footerText: {
           fontSize: typography.xs,
           color: colors.textTertiary,
+          alignSelf: 'stretch',
         },
       }),
     [colors]
@@ -68,8 +82,16 @@ export function TechnicalSupportScreen({ navigation }: Props) {
           }}
           style={styles.heroImage}
         />
-        <Text style={styles.heroTitle}>{t('support.technical.heroTitle')}</Text>
-        <Text style={styles.heroSubtitle}>{t('support.technical.heroSubtitle')}</Text>
+        <RtlPhysicalRightBlock isRtl={isRtl}>
+          <Text style={[styles.heroTitle, textDirStyle]}>
+            {t('support.technical.heroTitle')}
+          </Text>
+        </RtlPhysicalRightBlock>
+        <RtlPhysicalRightBlock isRtl={isRtl}>
+          <Text style={[styles.heroSubtitle, textDirStyle]}>
+            {t('support.technical.heroSubtitle')}
+          </Text>
+        </RtlPhysicalRightBlock>
       </View>
 
       <ContactCard
@@ -80,7 +102,11 @@ export function TechnicalSupportScreen({ navigation }: Props) {
       />
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>{t('support.technical.footerCopyright')}</Text>
+        <RtlPhysicalRightBlock isRtl={isRtl}>
+          <Text style={[styles.footerText, textDirStyle]}>
+            {t('support.technical.footerCopyright')}
+          </Text>
+        </RtlPhysicalRightBlock>
       </View>
     </Screen>
   );

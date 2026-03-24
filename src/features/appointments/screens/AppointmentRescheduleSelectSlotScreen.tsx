@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -7,26 +7,30 @@ import { Screen } from '../../../shared/ui/Screen';
 import { LoadingView } from '../../../shared/ui/LoadingView';
 import { EmptyView } from '../../../shared/ui/EmptyView';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { useRtl } from '../../../core/i18n/useRtl';
 import { getServiceSlots } from '../../services/api/servicesRepository';
 import { useAppointmentsStore } from '../store/useAppointmentsStore';
 import type { TimeSlot } from '../../../core/domain/timeSlot';
 import { Button } from '../../../shared/ui/Button';
-import { formatTimeLabel } from '../../../shared/utils/format';
+import { TimeSlotChipGrid } from '../../../shared/ui/TimeSlotChipGrid';
+import { spacing, typography } from '../../../shared/theme/tokens';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AppointmentRescheduleSelectSlot'>;
 
 export function AppointmentRescheduleSelectSlotScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
+  const { isRtl } = useRtl();
+  const styles = useMemo(() => createStyles(colors, isRtl), [colors, isRtl]);
   const appt = useAppointmentsStore((s) => s.appointments.find((a) => a.id === route.params.appointmentId) ?? null);
 
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('appointments.reschedule') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('appointments.reschedule') });
+  }, [navigation, t, isRtl]);
 
   useEffect(() => {
     let mounted = true;
@@ -64,32 +68,19 @@ export function AppointmentRescheduleSelectSlotScreen({ navigation, route }: Pro
   return (
     <Screen>
       <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.text }]}>{route.params.date}</Text>
-        <FlatList
-          data={daySlots}
-          keyExtractor={(i) => i.id}
-          contentContainerStyle={styles.list}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const selected = item.id === selectedSlotId;
-            return (
-              <Pressable
-                onPress={() => setSelectedSlotId(item.id)}
-                style={[
-                  styles.slot,
-                  { borderColor: colors.border, backgroundColor: colors.surface },
-                  selected && { borderColor: colors.primary, backgroundColor: colors.cardHover },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={formatTimeLabel(item.startTime)}
-              >
-                <View style={styles.slotRow}>
-                  <Text style={[styles.slotText, { color: colors.text }]}>{formatTimeLabel(item.startTime)}</Text>
-                </View>
-              </Pressable>
-            );
-          }}
-        />
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>{route.params.date}</Text>
+          <TimeSlotChipGrid
+            slots={daySlots}
+            selectedSlotId={selectedSlotId}
+            onSelect={setSelectedSlotId}
+          />
+        </ScrollView>
 
         {selectedSlotId ? (
           <View style={styles.bottomBar}>
@@ -101,16 +92,20 @@ export function AppointmentRescheduleSelectSlotScreen({ navigation, route }: Pro
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '700' },
-  list: { gap: 10, paddingVertical: 8, paddingBottom: 24 },
-  slot: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    padding: 12,
-  },
-  slotRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  slotText: { fontSize: 16, fontWeight: '600', textAlign: 'left' },
-  bottomBar: { paddingTop: 10 },
-});
+const createStyles = (colors: ReturnType<typeof useThemeColors>, isRtl: boolean) =>
+  StyleSheet.create({
+    container: { flex: 1 },
+    scroll: { flex: 1 },
+    scrollContent: {
+      paddingBottom: spacing.xxxl,
+      gap: spacing.md,
+    },
+    title: {
+      fontSize: typography.lg,
+      fontWeight: typography.bold,
+      color: colors.text,
+      textAlign: isRtl ? 'right' : 'left',
+      marginBottom: spacing.sm,
+    },
+    bottomBar: { paddingTop: spacing.sm },
+  });

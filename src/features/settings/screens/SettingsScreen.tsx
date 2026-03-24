@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useRtl } from '../../../core/i18n/useRtl';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,6 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 export function SettingsScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const token = useAuthStore((s) => s.token);
   const signOut = useAuthStore((s) => s.signOut);
 
@@ -33,9 +34,9 @@ export function SettingsScreen({ navigation }: Props) {
 
   const [emailDraft, setEmailDraft] = React.useState('');
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('settings.title') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('settings.title') });
+  }, [navigation, t, isRtl]);
 
   useEffect(() => {
     if (token) prefLoad();
@@ -56,7 +57,6 @@ export function SettingsScreen({ navigation }: Props) {
   const current = getCurrentLanguage();
 
   const colors = useThemeColors();
-  const { isRtl } = useRtl();
 
   const styles = React.useMemo(
     () =>

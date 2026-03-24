@@ -3,6 +3,8 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Image } f
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
+import { useRtl } from '../../core/i18n/useRtl';
+
 type Props = {
   children: React.ReactNode;
   scroll?: boolean;
@@ -12,6 +14,7 @@ type Props = {
 export function Screen({ children, scroll, keyboardAvoiding }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const { isRtl } = useRtl();
 
  const keyboardVerticalOffset =
   Platform.OS === 'ios' ? insets.top : 0;
@@ -24,7 +27,6 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
         root: {
           flex: 1,
           backgroundColor: colors.background,
-          // No direction property. I18nManager.forceRTL handles layout globally.
         },
         watermark: {
           position: 'absolute',
@@ -40,14 +42,14 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
         content: {
           flex: 1,
           paddingHorizontal: spacing.lg,
-          paddingTop: 0,
+          paddingTop: spacing.md,
           paddingBottom: bottomPad,
           gap: spacing.lg,
           zIndex: 1,
         },
         scrollContent: {
           paddingHorizontal: spacing.lg,
-          paddingTop: 0,
+          paddingTop: spacing.md,
           paddingBottom: bottomPad,
           gap: spacing.lg,
         },
@@ -55,11 +57,18 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
     [colors, bottomPad]
   );
 
+  // On iOS, createNativeStackNavigator wraps each screen in a native
+  // UIViewController that blocks direction:rtl from propagating down from
+  // the RootNavigator wrapper View. Apply it explicitly at EVERY level here
+  // (SafeAreaView + inner content View / ScrollView) so Arabic layout is
+  // correctly right-to-left on iOS — matching Android behaviour.
+  const iosRtlStyle = Platform.OS === 'ios' ? { direction: isRtl ? 'rtl' : 'ltr' } as const : undefined;
+
   const shouldScroll = Boolean(scroll || keyboardAvoiding);
 
   const content = shouldScroll ? (
     <ScrollView
-      contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
+      contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }, iosRtlStyle]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
@@ -69,12 +78,12 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
       {children}
     </ScrollView>
   ) : (
-    <View style={styles.content}>{children}</View>
+    <View style={[styles.content, iosRtlStyle]}>{children}</View>
   );
 
   if (!keyboardAvoiding) {
     return (
-      <SafeAreaView style={styles.root} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView style={[styles.root, iosRtlStyle]} edges={['left', 'right', 'bottom']}>
         <Image 
           source={require('../../../assets/logo.png')} 
           style={styles.watermark} 
@@ -86,7 +95,7 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={[styles.root, iosRtlStyle]} edges={['left', 'right', 'bottom']}>
       <Image 
         source={require('../../../assets/logo.png')} 
         style={styles.watermark} 

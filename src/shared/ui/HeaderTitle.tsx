@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { spacing, typography } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
 import { useRtl } from '../../core/i18n/useRtl';
@@ -22,10 +22,11 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isRtl: boolean)
     root: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: spacing.sm,
-      maxWidth: '100%',
-      flex: 1,
+      maxWidth: '85%',
       paddingHorizontal: spacing.sm,
+      alignSelf: 'center',
     },
     title: {
       color: colors.headerText,
@@ -34,5 +35,6 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isRtl: boolean)
       textAlign: isRtl ? 'right' : 'center',
       writingDirection: isRtl ? 'rtl' : 'ltr',
       flexShrink: 1,
+      ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
     },
   });

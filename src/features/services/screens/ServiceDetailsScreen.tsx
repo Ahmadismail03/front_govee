@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -33,6 +33,11 @@ export function ServiceDetailsScreen({ navigation, route }: Props) {
   );
   const hasMultipleFees = feesBreakdown.length > 1;
 const currency = 'ILS';
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: '', headerBackTitle: '' });
+  }, [navigation]);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -42,7 +47,12 @@ const currency = 'ILS';
         const svc = await getServiceById(route.params.serviceId);
         if (mounted) {
           setService(svc);
-          navigation.setOptions({ title: getServiceDisplayName(svc, i18n.language) });
+          // Empty title keeps the native iOS bar blank (no fallback text).
+          // The service name is shown prominently below the hero image.
+          navigation.setOptions({
+            title: '',
+            headerBackTitle: '',
+          });
         }
       } catch (e: any) {
         if (mounted) setError(true);
@@ -57,7 +67,10 @@ const currency = 'ILS';
 
   useEffect(() => {
     if (!service) return;
-    navigation.setOptions({ title: getServiceDisplayName(service, i18n.language) });
+    navigation.setOptions({
+      title: '',
+      headerBackTitle: '',
+    });
   }, [navigation, service, i18n.language]);
 
   if (isLoading) return <LoadingView />;
@@ -173,12 +186,14 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     color: colors.text,
     marginBottom: spacing.md,
     lineHeight: typography.xxl * typography.tight,
+    textAlign: 'left',
   },
   description: {
     fontSize: typography.base,
     color: colors.textSecondary,
     lineHeight: typography.base * typography.relaxed,
     marginBottom: spacing.xl,
+    textAlign: 'left',
   },
   detailsSection: {
     flexDirection: 'row',
@@ -209,10 +224,12 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     flex: 1,
     fontSize: typography.sm,
     fontWeight: typography.medium,
-    },
-    feeAmount: {
-      fontSize: typography.sm,
-      fontWeight: typography.semibold,
+    textAlign: 'left',
+  },
+  feeAmount: {
+    fontSize: typography.sm,
+    fontWeight: typography.semibold,
+    textAlign: 'left',
   },
   detailCard: {
     flex: 1,
@@ -228,11 +245,13 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     color: colors.textTertiary,
     fontWeight: typography.medium,
     marginBottom: spacing.xs,
+    textAlign: 'left',
   },
   detailValue: {
     fontSize: typography.lg,
     color: colors.text,
     fontWeight: typography.semibold,
+    textAlign: 'left',
   },
   sectionTitle: {
     fontSize: typography.lg,
@@ -240,6 +259,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     marginTop: spacing.lg,
     marginBottom: spacing.md,
     color: colors.text,
+    textAlign: 'left',
   },
   list: {
     gap: spacing.sm,
@@ -256,6 +276,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     fontSize: typography.base,
     color: colors.textSecondary,
     lineHeight: typography.base * typography.relaxed,
+    textAlign: 'left',
   },
   });
 }

@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import { borderRadius, iconSizes, shadows, spacing, typography } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
+import { useRtl } from '../../core/i18n/useRtl';
 type MenuItem = {
   key: string;
   icon: string;
@@ -100,10 +101,37 @@ type ContactCardProps = {
   phone?: string;
 };
 
+/** Arabic: pin copy to the physical right; `textAlign` is not mirrored by rtl ancestors. */
+function RtlPhysicalRightBlock({
+  isRtl,
+  layout = 'fullWidth',
+  children,
+}: {
+  isRtl: boolean;
+  /** `fullWidth` = card titles; `shrink` = trailing hint in a row. */
+  layout?: 'fullWidth' | 'shrink';
+  children: React.ReactNode;
+}) {
+  if (!isRtl) return <>{children}</>;
+  const box =
+    layout === 'fullWidth'
+      ? { alignSelf: 'stretch' as const, direction: 'ltr' as const, width: '100%' as const }
+      : { flexShrink: 0, direction: 'ltr' as const };
+  return <View style={box}>{children}</View>;
+}
+
 export function ContactCard({ title, description, email, phone }: ContactCardProps) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const textDirStyle = useMemo(
+    () =>
+      isRtl
+        ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
+        : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const }),
+    [isRtl]
+  );
 
   const copy = async (value: string) => {
     try {
@@ -128,8 +156,14 @@ export function ContactCard({ title, description, email, phone }: ContactCardPro
 
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      {description ? <Text style={styles.cardDesc}>{description}</Text> : null}
+      <RtlPhysicalRightBlock isRtl={isRtl}>
+        <Text style={[styles.cardTitle, textDirStyle]}>{title}</Text>
+      </RtlPhysicalRightBlock>
+      {description ? (
+        <RtlPhysicalRightBlock isRtl={isRtl}>
+          <Text style={[styles.cardDesc, textDirStyle]}>{description}</Text>
+        </RtlPhysicalRightBlock>
+      ) : null}
 
       {email ? (
         <Pressable
@@ -140,8 +174,18 @@ export function ContactCard({ title, description, email, phone }: ContactCardPro
           accessibilityLabel={email}
         >
           <Ionicons name="mail-outline" size={iconSizes.sm} color={colors.primary} />
-          <Text style={styles.value}>{email}</Text>
-          <Text style={styles.copyHint}>{hint}</Text>
+          <View style={styles.valueCell}>
+            {isRtl ? (
+              <View style={styles.valueLtrBox}>
+                <Text style={[styles.value, textDirStyle]}>{email}</Text>
+              </View>
+            ) : (
+              <Text style={[styles.value, textDirStyle]}>{email}</Text>
+            )}
+          </View>
+          <RtlPhysicalRightBlock isRtl={isRtl} layout="shrink">
+            <Text style={[styles.copyHint, textDirStyle]}>{hint}</Text>
+          </RtlPhysicalRightBlock>
         </Pressable>
       ) : null}
 
@@ -154,8 +198,18 @@ export function ContactCard({ title, description, email, phone }: ContactCardPro
           accessibilityLabel={phone}
         >
           <Ionicons name="call-outline" size={iconSizes.sm} color={colors.primary} />
-          <Text style={styles.value}>{phone}</Text>
-          <Text style={styles.copyHint}>{hint}</Text>
+          <View style={styles.valueCell}>
+            {isRtl ? (
+              <View style={styles.valueLtrBox}>
+                <Text style={[styles.value, textDirStyle]}>{phone}</Text>
+              </View>
+            ) : (
+              <Text style={[styles.value, textDirStyle]}>{phone}</Text>
+            )}
+          </View>
+          <RtlPhysicalRightBlock isRtl={isRtl} layout="shrink">
+            <Text style={[styles.copyHint, textDirStyle]}>{hint}</Text>
+          </RtlPhysicalRightBlock>
         </Pressable>
       ) : null}
     </View>
@@ -212,11 +266,13 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
       fontSize: typography.lg,
       fontWeight: typography.semibold,
       color: colors.text,
+      alignSelf: 'stretch',
     },
     cardDesc: {
       fontSize: typography.base,
       color: colors.textSecondary,
       lineHeight: typography.base * typography.normal,
+      alignSelf: 'stretch',
     },
     row: {
       flexDirection: 'row',
@@ -232,8 +288,15 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
     rowPressed: {
       opacity: 0.8,
     },
-    value: {
+    valueCell: {
       flex: 1,
+      minWidth: 0,
+    },
+    valueLtrBox: {
+      direction: 'ltr',
+      alignSelf: 'stretch',
+    },
+    value: {
       fontSize: typography.base,
       color: colors.text,
     },

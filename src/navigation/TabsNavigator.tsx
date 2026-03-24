@@ -48,8 +48,13 @@ export function MainTabs() {
           backgroundColor: colors.primary,
           elevation: 0,
           shadowOpacity: 0,
-          height: 96,
+          // No hardcoded height — React Navigation v7 calculates the correct
+          // total height as (platform default + headerStatusBarHeight) automatically.
         },
+        // Explicitly pass the top inset so the header content is always
+        // positioned below the status bar on every device / OS version.
+        // With edgeToEdgeEnabled:true this equals the real status-bar height.
+        headerStatusBarHeight: insets.top,
         headerShadowVisible: false,
         headerLeftContainerStyle: {
           paddingStart: spacing.xs,
@@ -101,17 +106,17 @@ export function MainTabs() {
         headerLeft: () => (
           <View style={styles.headerRightCluster}>
             <HeaderMenuButton />
-            <Text style={[styles.headerRightTitle, { color: colors.headerText }]}>
-              {route.name === 'HomeTab'
-                ? t('tabs.home')
-                : route.name === 'ServicesTab'
-                  ? t('tabs.services')
-                  : route.name === 'AppointmentsTab'
-                    ? t('tabs.appointments')
+            {route.name !== 'AppointmentsTab' ? (
+              <Text style={[styles.headerRightTitle, { color: colors.headerText }]}>
+                {route.name === 'HomeTab'
+                  ? t('tabs.home')
+                  : route.name === 'ServicesTab'
+                    ? t('tabs.services')
                     : route.name === 'InboxTab'
                       ? t('tabs.voice')
                       : t('tabs.profile')}
-            </Text>
+              </Text>
+            ) : null}
           </View>
         ),
         headerRight: () => (

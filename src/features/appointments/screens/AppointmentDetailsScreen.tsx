@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import { StyleSheet, Text, View, Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -13,12 +13,14 @@ import { useThemeColors, type ThemeColors } from '../../../shared/theme/useTheme
 import { useServicesStore } from '../../services/store/useServicesStore';
 import { getServiceImageSource } from '../../services/utils/serviceImages';
 import { useReminderPreferencesStore } from '../../preferences/store/useReminderPreferencesStore';
+import { useRtl } from '../../../core/i18n/useRtl';
 import { formatTimeLabel } from '../../../shared/utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AppointmentDetails'>;
 
 export function AppointmentDetailsScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const appt = useAppointmentsStore((s) => s.appointments.find((a) => a.id === route.params.appointmentId) ?? null);
@@ -27,9 +29,9 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
   const pref = useReminderPreferencesStore((s) => s.pref);
   const loadPref = useReminderPreferencesStore((s) => s.load);
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('appointments.details') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('appointments.details') });
+  }, [navigation, t, isRtl]);
 
   useEffect(() => {
     loadPref();

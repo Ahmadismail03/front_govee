@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { useAppointmentsStore } from '../store/useAppointmentsStore';
 import type { TimeSlot } from '../../../core/domain/timeSlot';
 import { Button } from '../../../shared/ui/Button';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { useRtl } from '../../../core/i18n/useRtl';
 import { formatTimeLabel } from '../../../shared/utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AppointmentRescheduleConfirm'>;
@@ -18,6 +19,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AppointmentRescheduleCo
 export function AppointmentRescheduleConfirmScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const colors = useThemeColors();
+  const { isRtl } = useRtl();
   const appt = useAppointmentsStore((s) => s.appointments.find((a) => a.id === route.params.appointmentId) ?? null);
   const isLoading = useAppointmentsStore((s) => s.isLoading);
   const reschedule = useAppointmentsStore((s) => s.reschedule);
@@ -25,9 +27,9 @@ export function AppointmentRescheduleConfirmScreen({ navigation, route }: Props)
   const [slot, setSlot] = useState<TimeSlot | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('appointments.reschedule') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('appointments.reschedule') });
+  }, [navigation, t, isRtl]);
 
   useEffect(() => {
     let mounted = true;

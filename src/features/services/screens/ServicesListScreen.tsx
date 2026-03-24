@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ImageBackground } from 'react-native';
 import { useRtl } from '../../../core/i18n/useRtl';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { TabsParamList } from '../../../navigation/types';
@@ -20,7 +19,6 @@ type Props = BottomTabScreenProps<TabsParamList, 'ServicesTab'>;
 export function ServicesListScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
   const { isRtl } = useRtl();
-  const insets = useSafeAreaInsets();
   const colors = useThemeColors();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -92,7 +90,7 @@ export function ServicesListScreen({ navigation }: Props) {
   const listHeader = useMemo(
     () => (
       <>
-      <View style={[styles.headerSection, { marginTop: -insets.top - spacing.md }]}>
+      <View style={styles.headerSection}>
         <ImageBackground
           source={{ uri: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&h=400&fit=crop' }}
           style={[styles.headerBackground, { width: '100%' }]}
@@ -100,7 +98,7 @@ export function ServicesListScreen({ navigation }: Props) {
           resizeMode="cover"
         >
           <View style={styles.headerOverlay} />
-          <View style={[styles.headerContent, { paddingTop: insets.top + spacing.xl }]}>
+          <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>{t('services.title')}</Text>
             <Text style={styles.headerDescription}>{t('services.description')}</Text>
           </View>
@@ -162,7 +160,6 @@ export function ServicesListScreen({ navigation }: Props) {
       categories,
       category,
       colors.textTertiary,
-      insets.top,
       searchDraft,
       setCategory,
       setSearch,

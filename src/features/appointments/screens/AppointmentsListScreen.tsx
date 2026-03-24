@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, Image } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
@@ -16,13 +16,23 @@ import { useThemeColors, type ThemeColors } from '../../../shared/theme/useTheme
 import { Button } from '../../../shared/ui/Button';
 import { useServicesStore } from '../../services/store/useServicesStore';
 import { getServiceImageSource } from '../../services/utils/serviceImages';
+import { useRtl } from '../../../core/i18n/useRtl';
+import { RtlPhysicalRightBlock } from '../../../shared/ui/RtlPhysicalRightBlock';
 
 type Props = BottomTabScreenProps<TabsParamList, 'AppointmentsTab'>;
 
 export function AppointmentsListScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const textDirStyle = useMemo(
+    () =>
+      isRtl
+        ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
+        : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const }),
+    [isRtl]
+  );
   const token = useAuthStore((s) => s.token);
   const load = useAppointmentsStore((s) => s.load);
   const isLoading = useAppointmentsStore((s) => s.isLoading);
@@ -51,14 +61,31 @@ export function AppointmentsListScreen({ navigation }: Props) {
 
   return (
     <Screen>
-      {/* Header with icon and description */}
-      <View style={styles.header}>
-        <View style={styles.headerIcon}>
-          <Ionicons name="calendar-outline" size={iconSizes.lg} color={colors.primary} />
-        </View>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>{t('appointments.title')}</Text>
-        </View>
+      {/* Title + icon under the red bar; Arabic: both on physical right (icon at edge). */}
+      <View style={[styles.header, isRtl ? styles.headerRtl : styles.headerLtr]}>
+        {isRtl ? (
+          <>
+            <View style={[styles.headerTextContainer, styles.headerTextContainerRtl]}>
+              <RtlPhysicalRightBlock isRtl={isRtl}>
+                <Text style={[styles.headerTitle, textDirStyle]}>{t('appointments.title')}</Text>
+              </RtlPhysicalRightBlock>
+            </View>
+            <View style={styles.headerIcon}>
+              <Ionicons name="calendar-outline" size={iconSizes.lg} color={colors.primary} />
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.headerIcon}>
+              <Ionicons name="calendar-outline" size={iconSizes.lg} color={colors.primary} />
+            </View>
+            <View style={styles.headerTextContainer}>
+              <RtlPhysicalRightBlock isRtl={false}>
+                <Text style={[styles.headerTitle, textDirStyle]}>{t('appointments.title')}</Text>
+              </RtlPhysicalRightBlock>
+            </View>
+          </>
+        )}
       </View>
 
       <View style={styles.segment}>
@@ -196,6 +223,15 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       gap: spacing.md,
       marginBottom: spacing.lg,
+      alignSelf: 'stretch',
+    },
+    headerLtr: {
+      justifyContent: 'flex-start',
+    },
+    headerRtl: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      direction: 'ltr',
     },
     headerIcon: {
       width: 44,
@@ -208,11 +244,19 @@ const createStyles = (colors: ThemeColors) =>
     headerTextContainer: {
       flex: 1,
       gap: spacing.xs,
+      minWidth: 0,
+    },
+    headerTextContainerRtl: {
+      flex: 0,
+      flexGrow: 0,
+      flexShrink: 1,
+      maxWidth: '78%',
     },
     headerTitle: {
       fontSize: typography.xl,
       fontWeight: typography.bold,
       color: colors.text,
+      alignSelf: 'stretch',
     },
     headerDescription: {
       fontSize: typography.sm,

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { Alert, Button, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -10,20 +10,22 @@ import { useAuthStore } from '../../auth/store/useAuthStore';
 import * as repo from '../api/helpRepository';
 import type { HelpTopic } from '../../../core/domain/helpTopic';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { useRtl } from '../../../core/i18n/useRtl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'HelpTopicDetails'>;
 
 export function HelpTopicDetailsScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const colors = useThemeColors();
 
   const [topic, setTopic] = useState<HelpTopic | null>(null);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('help.detailsTitle') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('help.detailsTitle') });
+  }, [navigation, t, isRtl]);
 
   const reload = async () => {
     setLoading(true);

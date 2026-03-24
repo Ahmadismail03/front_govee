@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -7,16 +7,27 @@ import { ContactCard } from '../../../shared/ui/HeaderMenu';
 import { View, StyleSheet, Image, Text } from 'react-native';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { useRtl } from '../../../core/i18n/useRtl';
+import { RtlPhysicalRightBlock } from '../../../shared/ui/RtlPhysicalRightBlock';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReportProblem'>;
 
 export function ReportProblemScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const colors = useThemeColors();
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('support.report.title') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('support.report.title') });
+  }, [navigation, t, isRtl]);
+
+  const textDirStyle = React.useMemo(
+    () =>
+      isRtl
+        ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
+        : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const }),
+    [isRtl]
+  );
 
   const styles = React.useMemo(
     () =>
@@ -32,28 +43,32 @@ export function ReportProblemScreen({ navigation }: Props) {
         },
         heroImage: {
           width: '100%',
-          height: 160,
+          height: 176,
           borderRadius: borderRadius.md,
           marginBottom: spacing.md,
+          backgroundColor: colors.surface,
         },
         heroTitle: {
           fontSize: typography.lg,
           fontWeight: typography.bold,
           color: colors.text,
           marginBottom: spacing.xs,
+          alignSelf: 'stretch',
         },
         heroSubtitle: {
           fontSize: typography.sm,
           color: colors.textSecondary,
           lineHeight: typography.sm * typography.relaxed,
+          alignSelf: 'stretch',
         },
         footer: {
           marginTop: spacing.xl,
-          alignItems: 'center',
+          alignSelf: 'stretch',
         },
         footerText: {
           fontSize: typography.xs,
           color: colors.textTertiary,
+          alignSelf: 'stretch',
         },
       }),
     [colors]
@@ -63,13 +78,21 @@ export function ReportProblemScreen({ navigation }: Props) {
     <Screen scroll>
       <View style={styles.heroCard}>
         <Image
-          source={{
-            uri: 'https://images.unsplash.com/photo-1604586125093-13feae04fc53?auto=format&fit=crop&w=1200&q=80',
-          }}
+          source={require('../../../../assets/support/report-hero.jpg')}
           style={styles.heroImage}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
         />
-        <Text style={styles.heroTitle}>{t('support.report.heroTitle')}</Text>
-        <Text style={styles.heroSubtitle}>{t('support.report.heroSubtitle')}</Text>
+        <RtlPhysicalRightBlock isRtl={isRtl}>
+          <Text style={[styles.heroTitle, textDirStyle]}>
+            {t('support.report.heroTitle')}
+          </Text>
+        </RtlPhysicalRightBlock>
+        <RtlPhysicalRightBlock isRtl={isRtl}>
+          <Text style={[styles.heroSubtitle, textDirStyle]}>
+            {t('support.report.heroSubtitle')}
+          </Text>
+        </RtlPhysicalRightBlock>
       </View>
 
       <ContactCard
@@ -80,7 +103,11 @@ export function ReportProblemScreen({ navigation }: Props) {
       />
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>{t('support.report.footerCopyright')}</Text>
+        <RtlPhysicalRightBlock isRtl={isRtl}>
+          <Text style={[styles.footerText, textDirStyle]}>
+            {t('support.report.footerCopyright')}
+          </Text>
+        </RtlPhysicalRightBlock>
       </View>
     </Screen>
   );

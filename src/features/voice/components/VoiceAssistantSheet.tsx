@@ -1,4 +1,4 @@
-﻿import {
+import {
   Modal,
   StyleSheet,
   Text,
@@ -8,7 +8,7 @@
   Animated,
   Easing,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { borderRadius, iconSizes, shadows, spacing, typography } from '../../../shared/theme/tokens';
@@ -22,6 +22,8 @@ import { sendVoice, completeVoiceSession, createVoiceSession } from '../voiceApi
 import * as FileSystem from "expo-file-system/legacy";
 import { Audio } from "expo-av";
 import React from 'react';
+import { useRtl } from '../../../core/i18n/useRtl';
+import { RtlPhysicalRightBlock } from '../../../shared/ui/RtlPhysicalRightBlock';
 
 type Props = {
   onNavigate?: (screen: string, params?: any) => void;
@@ -160,6 +162,7 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
 
 export function VoiceAssistantSheet({ onNavigate }: Props) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const colors = useThemeColors();
   const isOpen = useVoiceStore((s) => s.isOpen);
   const setIsOpen = useVoiceStore((s) => s.setIsOpen);
@@ -527,16 +530,34 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const isMicDisabled = !isSessionReady || hasStartedSession;
+  const textDirStyle = useMemo(
+    () =>
+      isRtl
+        ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
+        : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const }),
+    [isRtl]
+  );
+  const insets = useSafeAreaInsets();
+  /** Modal + translucent status bar: pad the header so content clears the notch / status bar. */
+  const headerPaddingTop =
+    Platform.OS === 'ios' ? insets.top + spacing.md : spacing.md;
 
   return (
     <Modal visible={isOpen} animationType="slide" onRequestClose={() => setIsOpen(false)}>
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
 
         {/* ── Header ── */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
           <View style={styles.headerLeft}>
-            <MaterialIcons name="support-agent" size={iconSizes.md} color={colors.headerText} />
-            <Text style={styles.headerTitle}>{t('voice.title')}</Text>
+            <MaterialIcons
+              name="support-agent"
+              size={iconSizes.md}
+              color={colors.headerText}
+              style={styles.headerLeadingIcon}
+            />
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {t('voice.title')}
+            </Text>
           </View>
           <TouchableOpacity
             onPress={handleClose}
@@ -556,12 +577,14 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
             </Animated.View>
           ) : (
             <View style={styles.empty}>
-              <Text style={styles.emptySub}>{t('voice.examplePrompts')}</Text>
-              <View style={styles.examples}>
-                <Text style={styles.example}> {t('voice.example1')}</Text>
-                <Text style={styles.example}> {t('voice.example2')}</Text>
-                <Text style={styles.example}> {t('voice.example3')}</Text>
-              </View>
+              <RtlPhysicalRightBlock isRtl={isRtl}>
+                <Text style={[styles.emptySub, textDirStyle]}>{t('voice.examplePrompts')}</Text>
+                <View style={styles.examples}>
+                  <Text style={[styles.example, textDirStyle]}>{t('voice.example1')}</Text>
+                  <Text style={[styles.example, textDirStyle]}>{t('voice.example2')}</Text>
+                  <Text style={[styles.example, textDirStyle]}>{t('voice.example3')}</Text>
+                </View>
+              </RtlPhysicalRightBlock>
             </View>
           )}
         </View>
@@ -668,20 +691,28 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     header: {
       backgroundColor: colors.primary,
       paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
+      paddingBottom: spacing.md,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: spacing.sm,
     },
     headerLeft: {
+      flex: 1,
+      minWidth: 0,
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
     },
+    headerLeadingIcon: {
+      flexShrink: 0,
+    },
     headerIconBtn: {
       padding: spacing.xs,
+      flexShrink: 0,
     },
     headerTitle: {
+      flexShrink: 1,
       color: colors.headerText,
       fontSize: typography.lg,
       fontWeight: typography.bold,
@@ -693,11 +724,12 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     },
     empty: {
       flex: 1,
-      alignItems: 'center',
+      alignSelf: 'stretch',
+      alignItems: 'stretch',
       justifyContent: 'center',      // pull examples down, flush above mic zone
       paddingHorizontal: spacing.xl,
       paddingBottom: spacing.lg,
-      gap: spacing.sm,                 // tighter gap between label and card
+      gap: spacing.sm,               // tighter gap between label and card
     },
     // Icon + instruction block inside micZone (pre-session idle)
     micPrompt: {
@@ -722,14 +754,15 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       borderRadius: borderRadius.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      borderLeftWidth: 4,
-      borderLeftColor: colors.primary,
+      borderStartWidth: 4,
+      borderStartColor: colors.primary,
       padding: spacing.md,
       gap: spacing.sm,
       ...shadows.sm,
     },
 
     example: {
+      alignSelf: 'stretch',
       fontSize: typography.sm,
       color: colors.textSecondary,
     },

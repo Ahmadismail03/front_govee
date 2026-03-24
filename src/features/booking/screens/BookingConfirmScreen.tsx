@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -16,6 +16,7 @@ import { TextField } from '../../../shared/ui/TextField';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, borderRadius, iconSizes, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { useRtl } from '../../../core/i18n/useRtl';
 import { formatTimeLabel } from '../../../shared/utils/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingConfirm'>;
@@ -23,6 +24,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'BookingConfirm'>;
 export function BookingConfirmScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const theme = useThemeColors();
+  const { isRtl } = useRtl();
   const create = useAppointmentsStore((s) => s.create);
   const isLoading = useAppointmentsStore((s) => s.isLoading);
   const pref = useReminderPreferencesStore((s) => s.pref);
@@ -38,9 +40,9 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
   const [reminderChannel, setReminderChannel] = useState<ReminderChannel>(pref.enabled ? pref.channel : 'none');
   const [reminderEmail, setReminderEmail] = useState(pref.email ?? '');
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('booking.confirm') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('booking.confirm') });
+  }, [navigation, t, isRtl]);
 
   useEffect(() => {
     let mounted = true;
@@ -88,6 +90,20 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
         return t('preferences.reminderChannelBoth');
     }
   }, [reminderChannel, t]);
+
+  // Must run before any early return — same hook count on every render (Rules of Hooks).
+  const dirStyle = useMemo(
+    () => (isRtl ? ({ direction: 'rtl' } as const) : ({ direction: 'ltr' } as const)),
+    [isRtl]
+  );
+  const bodyTextAlign = useMemo(
+    () =>
+      isRtl
+        ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
+        : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const }),
+    [isRtl]
+  );
+  const iosRtl = Platform.OS === 'ios' && isRtl ? ({ direction: 'rtl' } as const) : undefined;
 
   if (loading || !service || !slot) return <LoadingView />;
 
@@ -166,61 +182,101 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
         pressed && styles.pillPressed,
       ]}
     >
-      <Text style={[styles.pillText, { color: selected ? theme.primary : theme.text }]}>{label}</Text>
+      <Text style={[styles.pillText, styles.pillLabelText, { color: selected ? theme.primary : theme.text }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 
   return (
     <Screen scroll keyboardAvoiding>
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Header: icon left; «الملخص» + intro explicit left (physical), Arabic writingDirection rtl */}
+      <View style={[styles.header, isRtl ? styles.headerRtlPhysical : styles.headerLtrPhysical]}>
         <View style={[styles.headerIcon, { backgroundColor: theme.primaryLight }]}>
           <Ionicons name="clipboard-outline" size={iconSizes.xl} color={theme.primary} />
         </View>
-        <View style={styles.headerTextContainer}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>{t('booking.summary')}</Text>
-          <Text style={[styles.headerDescription, { color: theme.textSecondary }]}>{t('booking.confirmDescription')}</Text>
+        <View style={[styles.headerTextContainer, isRtl && styles.headerTextRtlCluster]}>
+          <Text
+            style={[
+              styles.headerTitle,
+              isRtl ? styles.textRtlFlushStart : bodyTextAlign,
+              { color: theme.text },
+            ]}
+          >
+            {t('booking.summary')}
+          </Text>
+          <Text
+            style={[
+              styles.headerDescription,
+              isRtl ? styles.textRtlFlushStart : bodyTextAlign,
+              { color: theme.textSecondary },
+            ]}
+          >
+            {t('booking.confirmDescription')}
+          </Text>
         </View>
       </View>
 
       {/* Summary box */}
-      <View style={[styles.box, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}>
-        <View style={styles.row}>
+      <View
+        style={[
+          styles.box,
+          dirStyle,
+          iosRtl,
+          { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder },
+        ]}
+      >
+        <View style={[styles.row, isRtl ? styles.rowDetailPhysical : dirStyle]}>
           <Ionicons name="briefcase-outline" size={iconSizes.sm} color={theme.textSecondary} />
-          <Text style={[styles.key, { color: theme.textSecondary }]}>{t('booking.serviceLabel')}</Text>
-          <Text style={[styles.value, { color: theme.text }]}>{service.name}</Text>
+          <Text style={[styles.key, isRtl ? styles.textRtlCell : bodyTextAlign, { color: theme.textSecondary }]}>
+            {t('booking.serviceLabel')}
+          </Text>
+          <Text style={[styles.value, isRtl ? styles.textRtlCell : bodyTextAlign, { color: theme.text }]}>
+            {service.name}
+          </Text>
         </View>
-        <View style={styles.row}>
+        <View style={[styles.row, isRtl ? styles.rowDetailPhysical : dirStyle]}>
           <Ionicons name="calendar-outline" size={iconSizes.sm} color={theme.textSecondary} />
-          <Text style={[styles.key, { color: theme.textSecondary }]}>{t('booking.dateLabel')}</Text>
-          <Text style={[styles.value, { color: theme.text }]}>{route.params.date}</Text>
+          <Text style={[styles.key, isRtl ? styles.textRtlCell : bodyTextAlign, { color: theme.textSecondary }]}>
+            {t('booking.dateLabel')}
+          </Text>
+          <Text style={[styles.value, isRtl ? styles.textRtlCell : bodyTextAlign, { color: theme.text }]}>
+            {route.params.date}
+          </Text>
         </View>
-        <View style={styles.row}>
+        <View style={[styles.row, isRtl ? styles.rowDetailPhysical : dirStyle]}>
           <Ionicons name="time-outline" size={iconSizes.sm} color={theme.textSecondary} />
-          <Text style={[styles.key, { color: theme.textSecondary }]}>{t('booking.timeLabel')}</Text>
-          <Text style={[styles.value, { color: theme.text }]}>
+          <Text style={[styles.key, isRtl ? styles.textRtlCell : bodyTextAlign, { color: theme.textSecondary }]}>
+            {t('booking.timeLabel')}
+          </Text>
+          <Text style={[styles.value, isRtl ? styles.textRtlCell : bodyTextAlign, { color: theme.text }]}>
             {formatTimeLabel(slot.startTime)}
           </Text>
         </View>
 
-        <View style={[styles.section, { borderTopColor: theme.borderLight }]}>
-          <View style={styles.row}>
+        <View style={[styles.section, dirStyle, { borderTopColor: theme.borderLight }]}>
+          <View style={[styles.row, isRtl ? styles.rowDetailPhysical : dirStyle]}>
             <Ionicons name="notifications-outline" size={iconSizes.sm} color={theme.textSecondary} />
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('preferences.remindersTitle')}</Text>
-            <Text
-              style={[
-                styles.sectionMeta,
-                { color: theme.textSecondary },
-              ]}
-            >
+            <Text style={[styles.sectionTitle, isRtl ? styles.textRtlCell : bodyTextAlign, { color: theme.text }]}>
+              {t('preferences.remindersTitle')}
+            </Text>
+            <Text style={[styles.sectionMeta, isRtl ? styles.textRtlCell : bodyTextAlign, { color: theme.textSecondary }]}>
               {reminderEnabled
                 ? `${t('preferences.reminderSummary', { hours: reminderLeadTimeHours })} • ${channelLabel}`
                 : t('preferences.disabled')}
             </Text>
           </View>
 
-          <Text style={[styles.controlLabel, { color: theme.textSecondary }]}>{t('preferences.reminderTimeLabel')}</Text>
-          <View style={styles.pillsRow}>
+          <Text
+            style={[
+              styles.controlLabel,
+              isRtl ? styles.controlLabelEdgeLeft : bodyTextAlign,
+              { color: theme.textSecondary },
+            ]}
+          >
+            {t('preferences.reminderTimeLabel')}
+          </Text>
+          <View style={[styles.pillsRow, dirStyle]}>
             {[48, 24, 2].map((h) => (
               <OptionPill
                 key={h}
@@ -234,8 +290,16 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
             ))}
           </View>
 
-          <Text style={[styles.controlLabel, { color: theme.textSecondary }]}>{t('preferences.reminderChannelLabel')}</Text>
-          <View style={styles.pillsRow}>
+          <Text
+            style={[
+              styles.controlLabel,
+              isRtl ? styles.controlLabelEdgeLeft : bodyTextAlign,
+              { color: theme.textSecondary },
+            ]}
+          >
+            {t('preferences.reminderChannelLabel')}
+          </Text>
+          <View style={[styles.pillsRow, dirStyle]}>
             <OptionPill
               label={t('preferences.reminderChannelNone')}
               selected={reminderChannel === 'none'}
@@ -280,10 +344,21 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   header: {
+    marginBottom: spacing.lg,
+  },
+  /** LTR row: icon left, text grows to the right */
+  headerLtrPhysical: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    marginBottom: spacing.lg,
+    width: '100%',
+  },
+  /** RTL header row: same physical order as LTR — icon left, titles + body text start at the left */
+  headerRtlPhysical: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+    gap: spacing.md,
   },
   headerIcon: {
     width: 56,
@@ -291,10 +366,39 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   headerTextContainer: {
     flex: 1,
     gap: spacing.xs,
+    minWidth: 0,
+  },
+  headerTextRtlCluster: {
+    alignItems: 'flex-start',
+  },
+  /** Arabic title + intro: flush to the physical left */
+  textRtlFlushStart: {
+    width: '100%',
+    textAlign: 'left',
+    writingDirection: 'rtl',
+  },
+  /** Section labels pinned to the physical left */
+  controlLabelEdgeLeft: {
+    width: '100%',
+    textAlign: 'left',
+    writingDirection: 'rtl',
+  },
+  /** Detail rows: physical LTR row so icon → label → value all from the left edge (no Yoga auto-flip) */
+  rowDetailPhysical: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+    gap: spacing.sm,
+  },
+  /** Arabic in cells: anchor copy to the physical left */
+  textRtlCell: {
+    textAlign: 'left',
+    writingDirection: 'rtl',
   },
   headerTitle: {
     fontSize: typography.xl,
@@ -324,7 +428,9 @@ const styles = StyleSheet.create({
   },
   value: {
     flex: 1,
+    flexShrink: 1,
     fontSize: typography.base,
+    minWidth: 0,
   },
 
   section: {
@@ -362,6 +468,9 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: typography.sm,
     fontWeight: typography.semibold,
+  },
+  pillLabelText: {
+    textAlign: 'center',
   },
   emailWrap: {
     marginTop: spacing.xs,

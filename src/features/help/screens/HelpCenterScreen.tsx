@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import { Button, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -9,12 +9,14 @@ import { LoadingView } from '../../../shared/ui/LoadingView';
 import { ErrorView } from '../../../shared/ui/ErrorView';
 import { EmptyView } from '../../../shared/ui/EmptyView';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { useRtl } from '../../../core/i18n/useRtl';
 import { useHelpStore } from '../store/useHelpStore';
 import type { HelpTopic } from '../../../core/domain/helpTopic';
 type Props = NativeStackScreenProps<RootStackParamList, 'HelpCenter'>;
 
 export function HelpCenterScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
   const query = useHelpStore((s) => s.query);
   const setQuery = useHelpStore((s) => s.setQuery);
   const search = useHelpStore((s) => s.search);
@@ -22,9 +24,9 @@ export function HelpCenterScreen({ navigation }: Props) {
   const error = useHelpStore((s) => s.error);
   const topics = useHelpStore((s) => s.topics);
 
-  useEffect(() => {
-    navigation.setOptions({ title: t('help.title') });
-  }, [navigation, t]);
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: isRtl ? '' : t('help.title') });
+  }, [navigation, t, isRtl]);
 
   useEffect(() => {
     if (topics.length === 0) search();

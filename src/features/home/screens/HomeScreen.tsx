@@ -225,7 +225,8 @@ function ServiceCard({
             borderColor: colors.cardBorder,
             borderStartWidth: 4,
             borderStartColor: '#C4161C',
-          },
+            direction: 'rtl',
+          } as any,
         ]}
       >
         {/* Image */}
@@ -236,23 +237,21 @@ function ServiceCard({
 
         {/* Content */}
         <View style={serviceCardStyles.content}>
-          {/* Title */}
-          <Text
-            style={[serviceCardStyles.title, { color: colors.text }]}
-            numberOfLines={2}
-          >
-            {service.name}
-          </Text>
-
-          {/* Description */}
-          {Boolean(service.description) && (
+          {/* Title row: chevron first (anchors to far right in RTL) then name */}
+          <View style={serviceCardStyles.titleRow}>
+            <Ionicons
+              name="chevron-back"
+              size={20}
+              color={colors.primary}
+              style={serviceCardStyles.arrow}
+            />
             <Text
-              style={[serviceCardStyles.description, { color: colors.textSecondary }]}
+              style={[serviceCardStyles.title, { color: colors.text }]}
               numberOfLines={2}
             >
-              {service.description}
+              {service.name}
             </Text>
-          )}
+          </View>
 
           {/* Footer */}
           <View style={serviceCardStyles.footer}>
@@ -261,7 +260,6 @@ function ServiceCard({
                 {service.category}
               </Text>
             </View>
-
           </View>
         </View>
       </Pressable>
@@ -291,35 +289,36 @@ const serviceCardStyles = StyleSheet.create({
   },
   content: {
     flexDirection: 'column',
-    alignItems: 'flex-start',
     paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
-    paddingStart: spacing.md,
+    // RTL: paddingStart = physical right — 0 so title sits flush to the red accent edge
+    paddingStart: 0,
     paddingEnd: spacing.md,
     gap: spacing.sm,
   },
+  // Full width so the chevron+title cluster anchors to the far right without stray space
+  titleRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    gap: spacing.sm,
+  },
   title: {
+    flexShrink: 1,
     fontSize: typography.base,
     fontWeight: typography.semibold,
-    textAlign: 'left',
-    alignSelf: 'flex-start',
-    width: '100%',
+    textAlign: 'right',
     lineHeight: Math.round(typography.base * 1.5),
     fontFamily: systemFontFamily,
   },
-  description: {
-    fontSize: typography.sm,
-    lineHeight: typography.sm * 1.55,
-    textAlign: 'left',
-    alignSelf: 'flex-start',
-    width: '100%',
-    marginBottom: spacing.sm,
-    fontFamily: systemFontFamily,
+  arrow: {
+    marginTop: spacing.xs,
+    flexShrink: 0,
   },
   footer: {
-    alignSelf: 'flex-start',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    // RTL column: flex-end on cross-axis = physical left — pill sits at far left
+    alignSelf: 'flex-end',
     marginTop: spacing.xs,
   },
   badge: {
@@ -334,6 +333,7 @@ const serviceCardStyles = StyleSheet.create({
     color: '#C4161C',
     fontFamily: systemFontFamily,
     lineHeight: Math.round(typography.xs * 1.4),
+    textAlign: 'left',
   },
 });
 
@@ -346,7 +346,6 @@ export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const activeLanguage = i18n.resolvedLanguage || i18n.language;
   const fabSide: 'left' | 'right' = activeLanguage.startsWith('ar') ? 'right' : 'left';
-  const viewAllSideStyle = activeLanguage.startsWith('ar') ? { left: 0 } : { right: 0 };
 
   const carouselRef = useRef<FlatList<Promo> | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -511,8 +510,12 @@ export function HomeScreen({ navigation }: Props) {
   if (isLoading && !home) return <LoadingView />;
   if (error && !home) return <ErrorView message={error} onRetry={loadHome} />;
 
+  // On iOS the native tab/stack containers block direction:rtl from the root View.
+  // Apply it here so the home screen and all its children are RTL on iOS.
+  const iosDir = Platform.OS === 'ios' ? ({ direction: isRtl ? 'rtl' : 'ltr' } as const) : undefined;
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={[{ flex: 1, backgroundColor: colors.background }, iosDir]}>
       <FlatList
         data={[]}
         renderItem={() => null}
@@ -683,19 +686,17 @@ export function HomeScreen({ navigation }: Props) {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'flex-start',
                     marginBottom: spacing.md,
                     gap: spacing.sm,
-                    width: '100%',
                   }}
                 >
-                  {/* Vertical marker (RTL) */}
                   <View
                     style={{
                       width: 4,
                       height: 22,
                       borderRadius: 2,
                       backgroundColor: '#C4161C',
+                      flexShrink: 0,
                     }}
                   />
                   <Text
@@ -703,7 +704,6 @@ export function HomeScreen({ navigation }: Props) {
                       fontSize: typography.base,
                       fontWeight: typography.bold,
                       color: colors.text,
-                      textAlign: 'right',
                     }}
                   >
                     {t('home.quickActions')}
@@ -737,20 +737,20 @@ export function HomeScreen({ navigation }: Props) {
               {/* ── Section Divider ─────────────────────────── */}
               <View
                 style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginVertical: spacing.xl,
-                  minHeight: 40,
-                  position: 'relative',
-                  width: '100%',
-                  justifyContent: 'center',
                 }}
               >
+                {/* Title + red marker — flex: 1 so it never collides with the button */}
                 <View
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: spacing.sm,
-                    alignSelf: 'flex-start',
-                    maxWidth: '70%',
+                    flex: 1,
+                    marginEnd: spacing.sm,
                   }}
                 >
                   <View
@@ -759,6 +759,7 @@ export function HomeScreen({ navigation }: Props) {
                       height: 22,
                       borderRadius: 2,
                       backgroundColor: '#C4161C',
+                      flexShrink: 0,
                     }}
                   />
                   <Text
@@ -766,20 +767,20 @@ export function HomeScreen({ navigation }: Props) {
                       fontSize: typography.base,
                       fontWeight: typography.bold,
                       color: colors.text,
-                      textAlign: 'left',
+                      flexShrink: 1,
                     }}
+                    numberOfLines={1}
                   >
                     {t('home.featuredServices') ?? 'الخدمات الشائعة'}
                   </Text>
                 </View>
+
+                {/* View All button — flexShrink: 0 keeps it from being squeezed */}
                 <TouchableOpacity
                   onPress={() => navigation.navigate('ServicesTab')}
                   accessibilityRole="button"
                   style={{
-                    position: 'absolute',
-                    ...viewAllSideStyle,
-                    top: 2,
-                    flexDirection: 'row-reverse',
+                    flexDirection: 'row',
                     alignItems: 'center',
                     gap: 4,
                     borderWidth: 1.5,
@@ -787,6 +788,7 @@ export function HomeScreen({ navigation }: Props) {
                     borderRadius: borderRadius.full,
                     paddingHorizontal: spacing.md,
                     paddingVertical: spacing.xs,
+                    flexShrink: 0,
                   }}
                 >
                   <Text
@@ -799,7 +801,7 @@ export function HomeScreen({ navigation }: Props) {
                     {t('home.viewAll') ?? 'عرض الكل'}
                   </Text>
                   <Ionicons
-                    name="chevron-back"
+                    name={isRtl ? 'chevron-back' : 'chevron-forward'}
                     size={12}
                     color="#C4161C"
                   />
