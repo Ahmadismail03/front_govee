@@ -3,6 +3,7 @@ import {
   Animated,
   FlatList,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import type { TabsParamList } from '../../../navigation/types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHomeStore } from '../store/useHomeStore';
 import { LoadingView } from '../../../shared/ui/LoadingView';
 import { ErrorView } from '../../../shared/ui/ErrorView';
@@ -45,6 +47,12 @@ type QuickAction = {
   bgColor: string;
   onPress: () => void;
 };
+
+const systemFontFamily = Platform.select({
+  ios: 'System',
+  android: 'sans-serif',
+  default: 'System',
+}) as string;
 
 // ─── Animated Quick Action Card ───────────────────────────────────────────────
 function ActionGridCard({
@@ -127,12 +135,21 @@ const gridStyles = StyleSheet.create({
 });
 
 // ─── Floating Voice FAB ───────────────────────────────────────────────────────
-function VoiceFAB({ onPress, isRtl }: { onPress: () => void; isRtl: boolean }) {
+function VoiceFAB({
+  onPress,
+  side,
+  bottomOffset,
+}: {
+  onPress: () => void;
+  side: 'left' | 'right';
+  bottomOffset: number;
+}) {
   return (
     <View
       style={[
         fabStyles.wrapper,
-        isRtl ? fabStyles.wrapperLeft : fabStyles.wrapperRight,
+        side === 'left' ? fabStyles.alignLeft : fabStyles.alignRight,
+        { bottom: bottomOffset },
       ]}
       pointerEvents="box-none"
     >
@@ -152,14 +169,17 @@ function VoiceFAB({ onPress, isRtl }: { onPress: () => void; isRtl: boolean }) {
 const fabStyles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
-    bottom: 12, // lower so it sits near the bottom navigation
+    left: 0,
+    right: 0,
     zIndex: 20,
   },
-  wrapperRight: {
-    right: 12,
+  alignRight: {
+    alignItems: 'flex-end',
+    paddingRight: 30,
   },
-  wrapperLeft: {
-    left: 12,
+  alignLeft: {
+    alignItems: 'flex-start',
+    paddingLeft: 30,
   },
   fab: {
     width: 56,
@@ -270,13 +290,13 @@ const serviceCardStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.12)',
   },
   content: {
-    position: 'relative',
-    paddingTop: spacing.md,
-    paddingRight: spacing.md,
-    paddingBottom: spacing.xl + spacing.md,
-    paddingLeft: spacing.md,
-    gap: spacing.sm,
+    flexDirection: 'column',
     alignItems: 'flex-start',
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingStart: spacing.md,
+    paddingEnd: spacing.md,
+    gap: spacing.sm,
   },
   title: {
     fontSize: typography.base,
@@ -284,6 +304,8 @@ const serviceCardStyles = StyleSheet.create({
     textAlign: 'left',
     alignSelf: 'flex-start',
     width: '100%',
+    lineHeight: Math.round(typography.base * 1.5),
+    fontFamily: systemFontFamily,
   },
   description: {
     fontSize: typography.sm,
@@ -291,13 +313,14 @@ const serviceCardStyles = StyleSheet.create({
     textAlign: 'left',
     alignSelf: 'flex-start',
     width: '100%',
+    marginBottom: spacing.sm,
+    fontFamily: systemFontFamily,
   },
   footer: {
-    position: 'absolute',
-    left: spacing.md,
-    bottom: spacing.md,
+    alignSelf: 'flex-start',
     alignItems: 'flex-start',
     justifyContent: 'flex-start',
+    marginTop: spacing.xs,
   },
   badge: {
     backgroundColor: '#FFE5E6',
@@ -309,15 +332,21 @@ const serviceCardStyles = StyleSheet.create({
     fontSize: typography.xs,
     fontWeight: typography.semibold,
     color: '#C4161C',
+    fontFamily: systemFontFamily,
+    lineHeight: Math.round(typography.xs * 1.4),
   },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export function HomeScreen({ navigation }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const { isRtl } = useRtl();
+  const insets = useSafeAreaInsets();
+  const activeLanguage = i18n.resolvedLanguage || i18n.language;
+  const fabSide: 'left' | 'right' = activeLanguage.startsWith('ar') ? 'right' : 'left';
+  const viewAllSideStyle = activeLanguage.startsWith('ar') ? { left: 0 } : { right: 0 };
 
   const carouselRef = useRef<FlatList<Promo> | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -487,12 +516,17 @@ export function HomeScreen({ navigation }: Props) {
       <FlatList
         data={[]}
         renderItem={() => null}
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: colors.background }}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        alwaysBounceVertical={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
           paddingTop: spacing.md,
-          paddingBottom: spacing.lg,
+          paddingBottom: insets.bottom + 88, // keep content clear of tab bar + mic button
+          flexGrow: 1,
         }}
         ListHeaderComponent={
           <>
@@ -743,7 +777,7 @@ export function HomeScreen({ navigation }: Props) {
                   accessibilityRole="button"
                   style={{
                     position: 'absolute',
-                    left: 0,
+                    ...viewAllSideStyle,
                     top: 2,
                     flexDirection: 'row-reverse',
                     alignItems: 'center',
@@ -790,7 +824,12 @@ export function HomeScreen({ navigation }: Props) {
           </>
         }
       />
-      <VoiceFAB onPress={() => setVoiceOpen(true)} isRtl={isRtl} />
+      <VoiceFAB
+        key={`home-fab-${fabSide}`}
+        onPress={() => setVoiceOpen(true)}
+        side={fabSide}
+        bottomOffset={Math.max(insets.bottom - 30)}
+      />
     </View>
   );
 }

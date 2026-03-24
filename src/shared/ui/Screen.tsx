@@ -13,10 +13,10 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
 
- // const keyboardVerticalOffset = Platform.OS === 'ios' ? Math.max(headerHeight, insets.top) : 0;
-const keyboardVerticalOffset =
+ const keyboardVerticalOffset =
   Platform.OS === 'ios' ? insets.top : 0;
-  const bottomPad = insets.bottom + spacing.md;
+  // SafeAreaView handles the bottom inset via edges; add extra comfortable spacing on top of that.
+  const bottomPad = spacing.xl;
 
   const styles = React.useMemo(
     () =>
@@ -41,25 +41,25 @@ const keyboardVerticalOffset =
           flex: 1,
           paddingHorizontal: spacing.lg,
           paddingTop: 0,
-          paddingBottom: spacing.md,
+          paddingBottom: bottomPad,
           gap: spacing.lg,
           zIndex: 1,
         },
         scrollContent: {
           paddingHorizontal: spacing.lg,
           paddingTop: 0,
-          paddingBottom: spacing.md,
+          paddingBottom: bottomPad,
           gap: spacing.lg,
         },
       }),
-    [colors]
+    [colors, bottomPad]
   );
 
   const shouldScroll = Boolean(scroll || keyboardAvoiding);
 
   const content = shouldScroll ? (
     <ScrollView
-      contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: bottomPad }]}
+      contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
@@ -74,7 +74,7 @@ const keyboardVerticalOffset =
 
   if (!keyboardAvoiding) {
     return (
-      <SafeAreaView style={styles.root} edges={['left', 'right']}>
+      <SafeAreaView style={styles.root} edges={['left', 'right', 'bottom']}>
         <Image 
           source={require('../../../assets/logo.png')} 
           style={styles.watermark} 
@@ -86,7 +86,7 @@ const keyboardVerticalOffset =
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['left', 'right']}>
+    <SafeAreaView style={styles.root} edges={['left', 'right', 'bottom']}>
       <Image 
         source={require('../../../assets/logo.png')} 
         style={styles.watermark} 

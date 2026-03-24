@@ -5,6 +5,7 @@ import type { TabsParamList } from './types';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { ServicesListScreen } from '../features/services/screens/ServicesListScreen';
 import { AppointmentsListScreen } from '../features/appointments/screens/AppointmentsListScreen';
@@ -37,6 +38,7 @@ export function MainTabs() {
   const { t } = useTranslation();
   const colors = useThemeColors();
   const setVoiceOpen = useVoiceStore((s) => s.setIsOpen);
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -70,9 +72,9 @@ export function MainTabs() {
           borderTopWidth: 1,
           elevation: 8,
           shadowOpacity: 0.08,
-          height: 62,
+          height: 56 + insets.bottom,
           paddingTop: 6,
-          paddingBottom: 6,
+          paddingBottom: Math.max(6, insets.bottom),
         },
         sceneStyle: {
           backgroundColor: colors.background,
