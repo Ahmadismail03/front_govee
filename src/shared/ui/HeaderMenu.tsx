@@ -71,7 +71,7 @@ export function HeaderMenuButton() {
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <View
-            style={[styles.menu, { end: spacing.md }]}
+            style={[styles.menu, { start: spacing.md }]}
           >
             {items.map((it) => (
               <Pressable
