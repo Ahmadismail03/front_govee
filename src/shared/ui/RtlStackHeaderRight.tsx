@@ -62,14 +62,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 6,
+    gap: 0,
     flexShrink: 1,
     maxWidth: '100%',
     flexWrap: 'nowrap',
     direction: 'rtl',
   } as const,
   hit: {
-    paddingHorizontal: 8,
+    // Keep chevron very close to the title.
+    paddingHorizontal: 2,
     paddingVertical: 4,
     flexShrink: 0,
   },

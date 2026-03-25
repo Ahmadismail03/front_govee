@@ -244,7 +244,11 @@ export function ServicesListScreen({ navigation }: Props) {
         renderItem={({ item }) => (
           <ServiceCard
             service={item}
-            onPress={() => navigation.getParent()?.navigate('ServiceDetails' as any, { serviceId: item.id })}
+            onPress={() =>
+              navigation
+                .getParent()
+                ?.navigate('ServiceDetails' as any, { serviceId: item.id, expandFees: true })
+            }
           />
         )}
         ListEmptyComponent={

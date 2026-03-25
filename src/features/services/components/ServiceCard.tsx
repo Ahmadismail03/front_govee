@@ -177,23 +177,34 @@ const currency = 'ILS';
           borderRadius: borderRadius.md,
           overflow: 'hidden',
           marginTop: spacing.xs,
+          alignSelf: 'stretch',
+          width: '100%',
         },
         feeRow: {
           flexDirection: 'row',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           justifyContent: 'space-between',
+          width: '100%',
           paddingVertical: spacing.sm,
           paddingHorizontal: spacing.md,
-          gap: spacing.md,
+          gap: spacing.xs,
         },
         feeDesc: {
           flex: 1,
+          flexBasis: 0,
+          minWidth: 0,
+          flexShrink: 1,
           fontSize: typography.xs,
           fontWeight: typography.medium,
+          textAlign: 'right',
+          writingDirection: 'rtl',
         },
         feeAmount: {
           fontSize: typography.xs,
           fontWeight: typography.semibold,
+          flexShrink: 0,
+          textAlign: 'right',
+          writingDirection: 'ltr',
         },
         infoSection: {
           flexDirection: 'row',
@@ -266,7 +277,13 @@ const currency = 'ILS';
         <View style={styles.detailsContainer}>
           <View style={styles.detailsRow}>
             <View style={styles.detailItem}>
-              <View style={styles.detailIconContainer}>
+              <View
+                style={[
+                  styles.detailIconContainer,
+                  // RTL: icon box slightly shifted so it doesn't stick out of the fees dropdown edge.
+                  isRtl ? { transform: [{ translateX: -spacing.xs }] } : null,
+                ]}
+              >
                 <Ionicons name="cash-outline" size={18} color={colors.primary} />
               </View>
               <View style={styles.detailTextContainer}>
@@ -302,10 +319,10 @@ const currency = 'ILS';
                           idx !== feesBreakdown.length - 1 && { borderBottomColor: colors.borderLight, borderBottomWidth: StyleSheet.hairlineWidth },
                         ]}
                       >
-                        <Text style={[styles.feeDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                        <Text style={[styles.feeDesc, { color: colors.textSecondary }]}>
                           {getFeeDisplayDescription(fee.description, i18n.language) || t('services.fees')}
                         </Text>
-                        <Text style={[styles.feeAmount, { color: colors.text }]}> {formatMoney(fee.amount)} </Text>
+                        <Text style={[styles.feeAmount, { color: colors.text }]}>{formatMoney(fee.amount)}</Text>
                       </View>
                     ))}
                   </View>

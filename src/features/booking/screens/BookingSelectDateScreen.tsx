@@ -213,7 +213,6 @@ export function BookingSelectDateScreen({ navigation, route }: Props) {
 
       {/* ── Calendar ── */}
       <View style={styles.calendarContainer}>
-        <Text style={styles.sectionTitle}>{t('booking.chooseDate')}</Text>
         <View style={styles.calendarWrapper}>
           <Calendar
             markedDates={markedDates}
@@ -252,21 +251,7 @@ export function BookingSelectDateScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      {/* ── Info footer card ── */}
-      <View style={styles.infoContainer}>
-        {/*
-          infoItem uses `row-reverse` in RTL so the "i" icon always sits on
-          the LEFT (reading-end) and the text block on the RIGHT (reading-start),
-          matching Arabic reading convention and the user's explicit requirement.
-        */}
-        <View style={styles.infoItem}>
-          <Ionicons name="information-circle-outline" size={iconSizes.lg} color={colors.info} />
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>{t('booking.dateInfoTitle')}</Text>
-            <Text style={styles.infoText}>{t('booking.dateInfo')}</Text>
-          </View>
-        </View>
-      </View>
+      {/* Info footer card intentionally removed per RTL UI request */}
     </Screen>
   );
 }

@@ -29,6 +29,8 @@ export function BookingSelectSlotScreen({ navigation, route }: Props) {
   const [reloadToken, setReloadToken] = useState(0);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(route.params.slotId ?? null);
 
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
   useLayoutEffect(() => {
     navigation.setOptions({ title: isRtl ? '' : t('booking.selectSlot') });
   }, [navigation, t, isRtl]);
@@ -55,19 +57,77 @@ export function BookingSelectSlotScreen({ navigation, route }: Props) {
     };
   }, [reloadToken, route.params.serviceId]);
 
+  const todayYmd = useMemo(() => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }, []);
+
+  const isBookingToday = route.params.date === todayYmd;
+
+  const todayMonthKey = useMemo(() => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${yyyy}-${mm}`;
+  }, []);
+
+  const isOutsideCurrentMonth = useMemo(() => {
+    const [y, m] = route.params.date.split('-');
+    const monthKey = `${y}-${String(m ?? '').padStart(2, '0')}`;
+    return monthKey !== todayMonthKey;
+  }, [route.params.date, todayMonthKey]);
+
+  // Tick so "today" chips become disabled right after time passes (e.g. 01:30)
+  useEffect(() => {
+    if (!isBookingToday) return;
+    const id = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [isBookingToday]);
+
   const daySlots = useMemo(
-    () => slots.filter((x) => x.date === route.params.date && x.isAvailable),
+    () => slots.filter((x) => x.date === route.params.date),
     [route.params.date, slots]
   );
+
+  const daySlotItems = useMemo(() => {
+    const [y, m, d] = route.params.date.split('-').map((n) => Number(n));
+    const yNum = y;
+    const mIdx = (m ?? 1) - 1;
+    const dNum = d;
+
+    return daySlots.map((s) => {
+      const [hhStr, minStr] = s.startTime.split(':');
+      const hh = Number(hhStr);
+      const min = Number(minStr);
+      const slotDate = new Date(yNum, mIdx, dNum, hh, min);
+      // If it's today and the time is reached (01:30 inclusive), treat as "past"
+      // so it becomes disabled once the time is reached.
+      const isPast = isBookingToday && slotDate.getTime() <= nowMs;
+      return {
+        id: s.id,
+        startTime: s.startTime,
+        disabled: !s.isAvailable || isPast || isOutsideCurrentMonth,
+      };
+    });
+  }, [daySlots, isBookingToday, isOutsideCurrentMonth, nowMs, route.params.date]);
+
+  // Keep selection valid (don't allow selecting disabled chips).
+  useEffect(() => {
+    if (!selectedSlotId) return;
+    const selectedItem = daySlotItems.find((x) => x.id === selectedSlotId);
+    if (selectedItem?.disabled) setSelectedSlotId(null);
+  }, [daySlotItems, selectedSlotId]);
 
   useEffect(() => {
     if (selectedSlotId) return;
     const preselected = route.params.slotId;
     if (!preselected) return;
-    if (daySlots.some((s) => s.id === preselected)) {
-      setSelectedSlotId(preselected);
-    }
-  }, [daySlots, route.params.slotId, selectedSlotId]);
+    const selectedItem = daySlotItems.find((x) => x.id === preselected);
+    if (selectedItem && !selectedItem.disabled) setSelectedSlotId(preselected);
+  }, [daySlotItems, route.params.slotId, selectedSlotId]);
 
   if (loading) return <LoadingView />;
   if (error)
@@ -95,15 +155,28 @@ export function BookingSelectSlotScreen({ navigation, route }: Props) {
   };
 
   const ListHeader = () => (
-    // In RTL: text block is at reading-start (right), icon is at reading-end (left)
     <View style={styles.header}>
-      <View style={styles.headerTextContainer}>
-        <Text style={styles.title}>{route.params.date}</Text>
-        <Text style={styles.subtitle}>{t('booking.selectSlotDescription')}</Text>
-      </View>
-      <View style={styles.headerIcon}>
-        <Ionicons name="time-outline" size={iconSizes.lg} color={colors.primary} />
-      </View>
+      {isRtl ? (
+        <>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.title}>{route.params.date}</Text>
+              <Text style={styles.subtitle}>{t('booking.selectSlotDescription')}</Text>
+            </View>
+            <View style={styles.headerIcon}>
+              <Ionicons name="time-outline" size={iconSizes.lg} color={colors.primary} />
+            </View>
+        </>
+      ) : (
+        <>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.title}>{route.params.date}</Text>
+            <Text style={styles.subtitle}>{t('booking.selectSlotDescription')}</Text>
+          </View>
+          <View style={styles.headerIcon}>
+            <Ionicons name="time-outline" size={iconSizes.lg} color={colors.primary} />
+          </View>
+        </>
+      )}
     </View>
   );
 
@@ -118,7 +191,7 @@ export function BookingSelectSlotScreen({ navigation, route }: Props) {
         >
           <ListHeader />
           <TimeSlotChipGrid
-            slots={daySlots}
+            slots={daySlotItems}
             selectedSlotId={selectedSlotId}
             onSelect={setSelectedSlotId}
           />
@@ -150,22 +223,25 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isRtl: boolean)
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing.md,
+      justifyContent: isRtl ? 'flex-start' : 'space-between',
+      gap: isRtl ? spacing.xs : spacing.md,
       marginBottom: 0,
-      direction: isRtl ? 'rtl' : 'ltr',
+      // Force LTR so the start is physical left, and we control RTL visually.
+      direction: 'ltr',
     } as any,
     title: {
       fontSize: typography.lg,
       fontWeight: typography.bold,
       color: colors.text,
       textAlign: isRtl ? 'right' : 'left',
+      writingDirection: isRtl ? ('rtl' as const) : ('ltr' as const),
     },
     subtitle: {
       fontSize: typography.sm,
       color: colors.textSecondary,
       marginTop: spacing.xs,
       textAlign: isRtl ? 'right' : 'left',
+      writingDirection: isRtl ? ('rtl' as const) : ('ltr' as const),
     },
     headerIcon: {
       width: 40,
@@ -178,6 +254,7 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isRtl: boolean)
     },
     headerTextContainer: {
       flex: 1,
+      alignItems: isRtl ? 'flex-end' : 'flex-start',
     },
     bottomBar: {
       paddingTop: spacing.sm,

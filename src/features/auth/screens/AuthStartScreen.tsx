@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native';
+import { Alert, StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -9,12 +9,14 @@ import { Button } from '../../../shared/ui/Button';
 import { useAuthStore } from '../store/useAuthStore';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { useRtl } from '../../../core/i18n/useRtl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AuthStart'>;
 
 export function AuthStartScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const themeColors = useThemeColors();
+  const { isRtl } = useRtl();
   const [nationalId, setNationalId] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [fullName, setFullName] = useState('');
@@ -22,6 +24,16 @@ export function AuthStartScreen({ navigation, route }: Props) {
   const isLoading = useAuthStore((s) => s.isLoading);
   const requestLoginOtp = useAuthStore((s) => s.requestLoginOtp);
   const requestSignupOtp = useAuthStore((s) => s.requestSignupOtp);
+
+  // Native stack header: make sure the route id isn't shown (e.g. "AuthStart").
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      title: '',
+      headerTitle: () => null,
+      // Remove app logo from the red header for AuthStart.
+      headerLeft: () => null,
+    });
+  }, [navigation]);
 
   // Reset the signup flow whenever the user edits nationalId or phone after
   // the server already confirmed "new user" — prevents stale state.
@@ -116,33 +128,33 @@ export function AuthStartScreen({ navigation, route }: Props) {
       StyleSheet.create({
         container: {
           flex: 1,
-          justifyContent: 'flex-start',
+          justifyContent: 'center',
         },
-        logoContainer: {
+        welcomeContainer: {
           alignItems: 'center',
-          marginBottom: spacing.xxxl,
-          paddingTop: spacing.xl,
+          marginBottom: spacing.md,
         },
         logo: {
           width: 200,
           height: 200,
-          marginBottom: spacing.lg,
+          marginBottom: spacing.xs,
         },
         welcomeTitle: {
           fontSize: typography.xxxl,
           fontWeight: typography.bold,
           color: themeColors.text,
           textAlign: 'center',
-          marginBottom: spacing.sm,
+          marginTop: -spacing.xs,
+          marginBottom: spacing.xs,
         },
         welcomeSubtitle: {
           fontSize: typography.base,
           color: themeColors.textSecondary,
           textAlign: 'center',
-          marginBottom: spacing.xxxl,
+          marginBottom: spacing.lg,
         },
         formContainer: {
-          gap: spacing.lg,
+          gap: spacing.md,
         },
         rtlInput: {
           textAlign: 'right',
@@ -178,7 +190,7 @@ export function AuthStartScreen({ navigation, route }: Props) {
   return (
     <Screen keyboardAvoiding>
       <View style={styles.container}>
-        <View style={styles.logoContainer}>
+        <View style={styles.welcomeContainer}>
           <Image source={require('../../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
           <Text style={styles.welcomeTitle}>{t('auth.welcomeTitle')}</Text>
           <Text style={styles.welcomeSubtitle}>{t('auth.welcomeSubtitle')}</Text>
@@ -190,6 +202,11 @@ export function AuthStartScreen({ navigation, route }: Props) {
             value={nationalId}
             onChangeText={setNationalId}
             style={styles.rtlInput}
+            labelStyle={
+              isRtl
+                ? ({ textAlign: 'left', writingDirection: 'rtl' } as const)
+                : undefined
+            }
             keyboardType="number-pad"
             autoCapitalize="none"
             placeholder={t('auth.nationalIdPlaceholder')}
@@ -200,6 +217,11 @@ export function AuthStartScreen({ navigation, route }: Props) {
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             style={styles.rtlInput}
+            labelStyle={
+              isRtl
+                ? ({ textAlign: 'left', writingDirection: 'rtl' } as const)
+                : undefined
+            }
             keyboardType="phone-pad"
             autoCapitalize="none"
             placeholder={t('auth.phoneNumberPlaceholder')}

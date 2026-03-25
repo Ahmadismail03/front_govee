@@ -8,9 +8,17 @@ type Props = {
   value: string;
   onChangeText: (v: string) => void;
   style?: StyleProp<TextStyle>;
+  labelStyle?: StyleProp<TextStyle>;
 } & Omit<TextInputProps, 'value' | 'onChangeText' | 'style'>;
 
-export function TextField({ label, value, onChangeText, style: customStyle, ...rest }: Props) {
+export function TextField({
+  label,
+  value,
+  onChangeText,
+  style: customStyle,
+  labelStyle,
+  ...rest
+}: Props) {
   const colors = useThemeColors();
   const { isRtl } = useRtl();
   const styles = React.useMemo(
@@ -18,6 +26,8 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
       StyleSheet.create({
         root: {
           gap: spacing.sm,
+          width: '100%',
+          alignSelf: 'stretch',
         },
         label: {
           fontSize: typography.sm,
@@ -25,6 +35,8 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
           color: colors.text,
           textAlign: isRtl ? 'right' : 'left',
           writingDirection: isRtl ? 'rtl' : 'ltr',
+          width: '100%',
+          alignSelf: 'stretch',
         },
         input: {
           borderWidth: 1,
@@ -35,6 +47,8 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
           fontSize: typography.base,
           color: colors.text,
           backgroundColor: colors.surface,
+          width: '100%',
+          alignSelf: 'stretch',
           textAlign: isRtl ? 'right' : 'left',
           writingDirection: isRtl ? 'rtl' : 'ltr',
         },
@@ -44,7 +58,7 @@ export function TextField({ label, value, onChangeText, style: customStyle, ...r
 
   return (
     <View style={styles.root}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, labelStyle]}>{label}</Text> : null}
       <TextInput
         style={[styles.input, customStyle]}
         value={value}

@@ -15,24 +15,32 @@ import { spacing, typography, borderRadius, shadows } from '../../../shared/them
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { getServiceImageSource } from '../utils/serviceImages';
 import { getFeeDisplayDescription, getServiceDisplayDescription, getServiceDisplayName } from '../utils/localization';
+import { useRtl } from '../../../core/i18n/useRtl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ServiceDetails'>;
 
 export function ServiceDetailsScreen({ navigation, route }: Props) {
   const { t, i18n } = useTranslation();
   const colors = useThemeColors();
-  const styles = React.useMemo(() => createStyles(colors), [colors]);
+  const { isRtl } = useRtl();
+  const styles = React.useMemo(() => createStyles(colors, isRtl), [colors, isRtl]);
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [feesExpanded, setFeesExpanded] = useState(false);
+  const [feesExpanded, setFeesExpanded] = useState(Boolean(route.params.expandFees));
 
   const feesBreakdown = useMemo(
     () => (Array.isArray(service?.feesBreakdown) ? service.feesBreakdown : []),
     [service?.feesBreakdown]
   );
+  const hasFeesBreakdown = feesBreakdown.length > 0;
   const hasMultipleFees = feesBreakdown.length > 1;
 const currency = 'ILS';
+
+  // Ensure expandFees param is applied even if it becomes available after mount.
+  useEffect(() => {
+    if (route.params?.expandFees) setFeesExpanded(true);
+  }, [route.params?.expandFees]);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: '', headerBackTitle: '' });
@@ -111,17 +119,17 @@ const currency = 'ILS';
           <Text style={styles.detailLabel}>{t('services.fees')}</Text>
           <Pressable
             onPress={() => {
-              if (!hasMultipleFees) return;
+              if (!hasFeesBreakdown) return;
               setFeesExpanded((v) => !v);
             }}
-            accessibilityRole={hasMultipleFees ? 'button' : undefined}
+            accessibilityRole={hasFeesBreakdown ? 'button' : undefined}
             style={({ pressed }) => [
               styles.feesValueRow,
-              hasMultipleFees && pressed && { opacity: 0.85 },
+              hasFeesBreakdown && pressed && { opacity: 0.85 },
             ]}
           >
             <Text style={styles.detailValue}>{formatMoney(service.fees)}</Text>
-            {hasMultipleFees && (
+            {hasFeesBreakdown && (
               <Ionicons
                 name={feesExpanded ? 'chevron-up' : 'chevron-down'}
                 size={16}
@@ -130,7 +138,7 @@ const currency = 'ILS';
             )}
           </Pressable>
 
-          {hasMultipleFees && feesExpanded && (
+          {hasFeesBreakdown && feesExpanded && (
             <View style={[styles.feesDropdown, { borderColor: colors.borderLight, backgroundColor: colors.surface }]}>
               {feesBreakdown.map((fee, idx) => (
                 <View
@@ -143,10 +151,14 @@ const currency = 'ILS';
                     },
                   ]}
                 >
-                  <Text style={[styles.feeDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+                  <Text
+                    style={[styles.feeDesc, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
                     {getFeeDisplayDescription(fee.description, i18n.language) || t('services.fees')}
                   </Text>
-                  <Text style={[styles.feeAmount, { color: colors.text }]}>
+                  <Text style={[styles.feeAmount, { color: colors.text }]} numberOfLines={1}>
                     {formatMoney(fee.amount)}
                   </Text>
                 </View>
@@ -169,7 +181,12 @@ const currency = 'ILS';
   );
 }
 
-function createStyles(colors: ReturnType<typeof useThemeColors>) {
+function createStyles(colors: ReturnType<typeof useThemeColors>, isRtl: boolean) {
+  // User request: physical alignment should start from far-left on iOS RTL.
+  // (Keep writingDirection rtl so Arabic glyph flow remains correct.)
+  const textAlign = isRtl ? 'left' : 'left';
+  const writingDirection = isRtl ? ('rtl' as const) : ('ltr' as const);
+
   return StyleSheet.create({
   hero: {
     width: '100%',
@@ -186,14 +203,20 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     color: colors.text,
     marginBottom: spacing.md,
     lineHeight: typography.xxl * typography.tight,
-    textAlign: 'left',
+    textAlign,
+    writingDirection,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   description: {
     fontSize: typography.base,
     color: colors.textSecondary,
     lineHeight: typography.base * typography.relaxed,
     marginBottom: spacing.xl,
-    textAlign: 'left',
+    textAlign,
+    writingDirection,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   detailsSection: {
     flexDirection: 'row',
@@ -204,32 +227,49 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    alignSelf: 'flex-start',
+    alignSelf: 'stretch',
+    justifyContent: 'flex-end',
+    // Keep icon + amount cluster anchored at physical right in RTL.
+    direction: 'ltr',
   },
   feesDropdown: {
     borderWidth: 1,
     borderRadius: borderRadius.md,
     overflow: 'hidden',
     marginTop: spacing.sm,
+    alignSelf: 'stretch',
   },
     feeRow: {
       flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap: spacing.md,
-  },
+      alignItems: 'flex-start',
+      // Description (left) and amount (right) with stable RTL layout.
+      justifyContent: 'space-between',
+      flexShrink: 1,
+      alignSelf: 'stretch',
+      width: '100%',
+      // Force physical placement: description stays on the physical left,
+      // amount stays on the physical right (prevents iOS RTL mirroring).
+      direction: 'ltr',
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      gap: spacing.xs,
+    },
   feeDesc: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontSize: typography.sm,
     fontWeight: typography.medium,
-    textAlign: 'left',
+    textAlign: isRtl ? 'right' : 'left',
+    writingDirection: isRtl ? ('rtl' as const) : ('ltr' as const),
   },
   feeAmount: {
     fontSize: typography.sm,
     fontWeight: typography.semibold,
-    textAlign: 'left',
+    textAlign: 'right',
+    // Digits should not be mirrored.
+    writingDirection: 'ltr',
+    flexShrink: 0,
   },
   detailCard: {
     flex: 1,
@@ -245,13 +285,19 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     color: colors.textTertiary,
     fontWeight: typography.medium,
     marginBottom: spacing.xs,
-    textAlign: 'left',
+    textAlign,
+    writingDirection,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   detailValue: {
     fontSize: typography.lg,
     color: colors.text,
     fontWeight: typography.semibold,
-    textAlign: 'left',
+    textAlign: isRtl ? 'right' : 'left',
+    writingDirection: isRtl ? ('rtl' as const) : ('ltr' as const),
+    alignSelf: 'stretch',
+    width: '100%',
   },
   sectionTitle: {
     fontSize: typography.lg,
@@ -259,7 +305,10 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     marginTop: spacing.lg,
     marginBottom: spacing.md,
     color: colors.text,
-    textAlign: 'left',
+    textAlign,
+    writingDirection,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   list: {
     gap: spacing.sm,
@@ -271,12 +320,17 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: colors.border,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   listItem: {
     fontSize: typography.base,
     color: colors.textSecondary,
     lineHeight: typography.base * typography.relaxed,
-    textAlign: 'left',
+    textAlign,
+    writingDirection,
+    alignSelf: 'stretch',
+    width: '100%',
   },
   });
 }

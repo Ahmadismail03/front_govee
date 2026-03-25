@@ -13,6 +13,7 @@ import { useReminderPreferencesStore } from '../../preferences/store/useReminder
 import type { ReminderChannel } from '../../../core/domain/reminderPreference';
 import { Button } from '../../../shared/ui/Button';
 import { TextField } from '../../../shared/ui/TextField';
+import { RtlPhysicalRightBlock } from '../../../shared/ui/RtlPhysicalRightBlock';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, borderRadius, iconSizes, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
@@ -182,7 +183,9 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
         pressed && styles.pillPressed,
       ]}
     >
-      <Text style={[styles.pillText, styles.pillLabelText, { color: selected ? theme.primary : theme.text }]}>
+      <Text
+        style={[styles.pillText, styles.pillLabelText, { color: selected ? theme.primary : theme.text }]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -324,14 +327,18 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
 
           {needsEmail ? (
             <View style={styles.emailWrap}>
-              <TextField
-                label={t('preferences.reminderEmailLabel')}
-                placeholder={t('preferences.reminderEmailPlaceholder')}
-                value={reminderEmail}
-                onChangeText={setReminderEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+              <RtlPhysicalRightBlock isRtl={isRtl}>
+                <TextField
+                  label={t('preferences.reminderEmailLabel')}
+                  placeholder={t('preferences.reminderEmailPlaceholder')}
+                  value={reminderEmail}
+                  onChangeText={setReminderEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  labelStyle={isRtl ? styles.textAlignRightRtl : undefined}
+                  style={isRtl ? styles.textAlignRightRtl : undefined}
+                />
+              </RtlPhysicalRightBlock>
             </View>
           ) : null}
         </View>
@@ -471,6 +478,10 @@ const styles = StyleSheet.create({
   },
   pillLabelText: {
     textAlign: 'center',
+  },
+  textAlignRightRtl: {
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   emailWrap: {
     marginTop: spacing.xs,

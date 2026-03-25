@@ -16,8 +16,7 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
   const insets = useSafeAreaInsets();
   const { isRtl } = useRtl();
 
- const keyboardVerticalOffset =
-  Platform.OS === 'ios' ? insets.top : 0;
+  const keyboardVerticalOffset = insets.top;
   // SafeAreaView handles the bottom inset via edges; add extra comfortable spacing on top of that.
   const bottomPad = spacing.xl;
 
@@ -103,7 +102,7 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
       />
       <KeyboardAvoidingView
         style={styles.root}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         keyboardVerticalOffset={keyboardVerticalOffset}
       >
         {content}

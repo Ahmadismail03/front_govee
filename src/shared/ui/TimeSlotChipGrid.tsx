@@ -7,7 +7,7 @@ import { useThemeColors } from '../theme/useTheme';
 
 const COLUMNS = 3;
 
-export type TimeSlotChipItem = { id: string; startTime: string };
+export type TimeSlotChipItem = { id: string; startTime: string; disabled?: boolean };
 
 type Props = {
   slots: TimeSlotChipItem[];
@@ -61,6 +61,11 @@ export function TimeSlotChipGrid({ slots, selectedSlotId, onSelect }: Props) {
           backgroundColor: colors.primary,
           ...shadows.sm,
         },
+        chipDisabled: {
+          backgroundColor: colors.surface,
+          opacity: 0.35,
+          ...shadows.sm,
+        },
         chipText: {
           fontSize: typography.base,
           fontWeight: typography.semibold,
@@ -71,6 +76,10 @@ export function TimeSlotChipGrid({ slots, selectedSlotId, onSelect }: Props) {
         },
         textSelected: {
           color: colors.textInverse,
+        },
+        textDisabled: {
+          color: colors.textSecondary,
+          opacity: 0.9,
         },
       }),
     [colors, gap]
@@ -84,22 +93,29 @@ export function TimeSlotChipGrid({ slots, selectedSlotId, onSelect }: Props) {
         {chipWidth > 0 &&
           slots.map((slot) => {
             const selected = slot.id === selectedSlotId;
+            const disabled = Boolean(slot.disabled);
             return (
               <Pressable
                 key={slot.id}
-                onPress={() => onSelect(slot.id)}
+                onPress={disabled ? undefined : () => onSelect(slot.id)}
                 style={({ pressed }) => [
                   styles.chip,
                   styles.chipIdle,
                   selected && styles.chipSelected,
+                  disabled && styles.chipDisabled,
                   { width: chipWidth },
-                  pressed && !selected && { opacity: 0.88 },
+                  pressed && !selected && !disabled && { opacity: 0.88 },
                 ]}
                 accessibilityRole="button"
-                accessibilityState={{ selected }}
+                accessibilityState={{ selected, disabled }}
                 accessibilityLabel={formatTimeLabel(slot.startTime)}
               >
-                <Text style={[styles.chipText, selected ? styles.textSelected : styles.textIdle]}>
+                <Text
+                  style={[
+                    styles.chipText,
+                    selected ? styles.textSelected : disabled ? styles.textDisabled : styles.textIdle,
+                  ]}
+                >
                   {formatTimeLabel(slot.startTime)}
                 </Text>
               </Pressable>

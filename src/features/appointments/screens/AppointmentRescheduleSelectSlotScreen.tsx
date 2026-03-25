@@ -14,6 +14,7 @@ import type { TimeSlot } from '../../../core/domain/timeSlot';
 import { Button } from '../../../shared/ui/Button';
 import { TimeSlotChipGrid } from '../../../shared/ui/TimeSlotChipGrid';
 import { spacing, typography } from '../../../shared/theme/tokens';
+import { RtlPhysicalRightBlock } from '../../../shared/ui/RtlPhysicalRightBlock';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AppointmentRescheduleSelectSlot'>;
 
@@ -74,7 +75,9 @@ export function AppointmentRescheduleSelectSlotScreen({ navigation, route }: Pro
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>{route.params.date}</Text>
+          <RtlPhysicalRightBlock isRtl={isRtl}>
+            <Text style={styles.title}>{route.params.date}</Text>
+          </RtlPhysicalRightBlock>
           <TimeSlotChipGrid
             slots={daySlots}
             selectedSlotId={selectedSlotId}
@@ -105,6 +108,8 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isRtl: boolean)
       fontWeight: typography.bold,
       color: colors.text,
       textAlign: isRtl ? 'right' : 'left',
+      writingDirection: isRtl ? 'rtl' : 'ltr',
+      alignSelf: 'stretch',
       marginBottom: spacing.sm,
     },
     bottomBar: { paddingTop: spacing.sm },

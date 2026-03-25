@@ -12,7 +12,7 @@ export type RedirectTarget = { screen: string; params?: any };
 
 export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<TabsParamList> | undefined;
-  ServiceDetails: { serviceId: string };
+  ServiceDetails: { serviceId: string; expandFees?: boolean };
   ProfileEdit: undefined;
   AuthRegister: undefined;
 

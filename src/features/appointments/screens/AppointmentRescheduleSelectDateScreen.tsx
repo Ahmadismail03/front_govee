@@ -160,7 +160,13 @@ export function AppointmentRescheduleSelectDateScreen({ navigation, route }: Pro
 
   return (
     <Screen scroll>
-      <Text style={[hintStyle.hint, { color: colors.text }]}>
+      <Text
+        style={[
+          hintStyle.hint,
+          { color: colors.text },
+          isRtl ? hintStyle.hintEdgeRight : hintStyle.hintEdgeLeft,
+        ]}
+      >
         {t('appointments.selectNewDate')}
       </Text>
       <View style={[hintStyle.calendarWrapper, { backgroundColor: colors.surface }]}>
@@ -231,6 +237,16 @@ const hintStyle = StyleSheet.create({
     fontSize: typography.lg,
     fontWeight: typography.bold as any,
     marginBottom: spacing.lg,
+  },
+  hintEdgeRight: {
+    alignSelf: 'stretch',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  hintEdgeLeft: {
+    alignSelf: 'stretch',
+    textAlign: 'left',
+    writingDirection: 'ltr',
   },
   calendarWrapper: {
     borderRadius: borderRadius.lg,

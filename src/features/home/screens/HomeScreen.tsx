@@ -861,7 +861,7 @@ export function HomeScreen({ navigation }: Props) {
                       service={service}
                       colors={colors}
                       onPress={() =>
-                        navigateTo('ServiceDetails', { serviceId: service.id })
+                        navigateTo('ServiceDetails', { serviceId: service.id, expandFees: true })
                       }
                     />
                   ))}
