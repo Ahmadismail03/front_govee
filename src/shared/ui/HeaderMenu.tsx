@@ -1,8 +1,21 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  InteractionManager,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
+import { getDefaultHeaderHeight } from '@react-navigation/elements';
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { borderRadius, iconSizes, shadows, spacing, typography } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
@@ -14,12 +27,84 @@ type MenuItem = {
   onPress: () => void;
 };
 
-export function HeaderMenuButton() {
+export type HeaderMenuDropdownEdge = 'leading' | 'trailing';
+
+type HeaderMenuButtonProps = {
+  /**
+   * Horizontal anchor for the dropdown (under the hamburger).
+   * - `leading`: same edge as `headerLeft` (e.g. main tabs: logo + menu on the left).
+   * - `trailing`: same edge as `headerRight` (e.g. AuthStart menu on the right).
+   */
+  dropdownEdge?: HeaderMenuDropdownEdge;
+  /** Stack screen uses `presentation: 'modal'` (taller iOS header) — keeps the menu flush under the bar. */
+  modalStackHeader?: boolean;
+};
+
+export function HeaderMenuButton({
+  dropdownEdge = 'leading',
+  modalStackHeader = false,
+}: HeaderMenuButtonProps) {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const frame = useSafeAreaFrame();
+  const insets = useSafeAreaInsets();
+  const anchorRef = useRef<View>(null);
   const [open, setOpen] = useState(false);
+  const [menuTopPx, setMenuTopPx] = useState<number | null>(null);
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const fallbackMenuTop = useMemo(() => {
+    const rnEstimate = getDefaultHeaderHeight(frame, modalStackHeader, insets.top);
+    if (Platform.OS === 'android') {
+      // RN's formula is often 64 + insets.top; real material headers + edge-to-edge
+      // end shorter (~56 toolbar), which left a visible gap under the ☰.
+      const status = StatusBar.currentHeight ?? 0;
+      const toolbar = 56;
+      const fromStatus = status > 0 ? status + toolbar : insets.top + toolbar;
+      return Math.max(insets.top, Math.min(fromStatus, rnEstimate) - 4);
+    }
+    return Math.max(insets.top, rnEstimate - 6);
+  }, [frame.height, frame.width, insets.top, modalStackHeader]);
+
+  const openMenu = useCallback(() => {
+    let attempts = 0;
+    const runMeasure = () => {
+      anchorRef.current?.measureInWindow((_x, y, _w, h) => {
+        attempts += 1;
+        const underIcon = y + h;
+        const looksValid = h > 0 && underIcon > insets.top + 8 && y >= 0;
+
+        if (!looksValid && attempts < 8) {
+          requestAnimationFrame(runMeasure);
+          return;
+        }
+
+        const top = looksValid ? underIcon : fallbackMenuTop;
+        setMenuTopPx(top);
+        setOpen(true);
+      });
+    };
+
+    InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        if (Platform.OS === 'android') {
+          requestAnimationFrame(runMeasure);
+        } else {
+          runMeasure();
+        }
+      });
+    });
+  }, [fallbackMenuTop, insets.top]);
+
+  const closeMenu = useCallback(() => {
+    setOpen(false);
+    setMenuTopPx(null);
+  }, []);
+
+  const menuTop = menuTopPx ?? fallbackMenuTop;
+  const menuHorizontalStyle =
+    dropdownEdge === 'trailing' ? { end: spacing.md } : { start: spacing.md };
 
   const navigateTo = (screen: string, params?: any) => {
     const parent = typeof navigation?.getParent === 'function' ? navigation.getParent() : null;
@@ -59,27 +144,36 @@ export function HeaderMenuButton() {
 
   return (
     <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel={t('header.menu.open')}
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-      >
-        <Ionicons name="menu" size={iconSizes.md} color={colors.headerText} />
-      </Pressable>
+      <View ref={anchorRef} collapsable={false} style={styles.anchor}>
+        <Pressable
+          onPress={openMenu}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={t('header.menu.open')}
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+        >
+          <Ionicons name="menu" size={iconSizes.md} color={colors.headerText} />
+        </Pressable>
+      </View>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <View
-            style={[styles.menu, { start: spacing.md }]}
-          >
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={closeMenu}
+        // Android: default modal content sits below the status bar while
+        // measureInWindow() uses full-screen coords — `top` was too large (huge gap under ☰).
+        statusBarTranslucent={Platform.OS === 'android'}
+      >
+        <View style={styles.modalRoot} pointerEvents="box-none">
+          <Pressable style={styles.backdrop} onPress={closeMenu} accessibilityRole="button" />
+          <View style={[styles.menu, { top: menuTop }, menuHorizontalStyle]} pointerEvents="box-none">
             {items.map((it) => (
               <Pressable
                 key={it.key}
                 style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
                 onPress={() => {
-                  setOpen(false);
+                  closeMenu();
                   it.onPress();
                 }}
               >
@@ -88,7 +182,7 @@ export function HeaderMenuButton() {
               </Pressable>
             ))}
           </View>
-        </Pressable>
+        </View>
       </Modal>
     </>
   );
@@ -218,6 +312,9 @@ export function ContactCard({ title, description, email, phone }: ContactCardPro
 
 const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
   StyleSheet.create({
+    anchor: {
+      alignSelf: 'center',
+    },
     button: {
       padding: spacing.xs,
       borderRadius: borderRadius.md,
@@ -225,12 +322,14 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
     buttonPressed: {
       opacity: 0.7,
     },
-    backdrop: {
+    modalRoot: {
       flex: 1,
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
     },
     menu: {
       position: 'absolute',
-      top: 52,
       backgroundColor: colors.surface,
       borderRadius: borderRadius.lg,
       borderWidth: 1,

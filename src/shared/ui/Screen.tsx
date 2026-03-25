@@ -102,7 +102,9 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
       />
       <KeyboardAvoidingView
         style={styles.root}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        // iOS: padding. Android: undefined so windowSoftInputMode=adjustResize can resize
+        // the window; padding behavior here often fights adjustResize and ScrollView.
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={keyboardVerticalOffset}
       >
         {content}

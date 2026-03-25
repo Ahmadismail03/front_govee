@@ -123,7 +123,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
     () =>
       StyleSheet.create({
         container: {
-          flex: 1,
+          flexGrow: 1,
           justifyContent: 'flex-start',
         },
         logoContainer: {

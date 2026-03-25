@@ -169,7 +169,7 @@ export function RootNavigator() {
               ),
               headerRight: () => (
                 <View style={styles.headerRight}>
-                  <HeaderMenuButton />
+                  <HeaderMenuButton dropdownEdge="trailing" modalStackHeader />
                 </View>
               ),
             }}
@@ -187,7 +187,7 @@ export function RootNavigator() {
               ),
               headerRight: () => (
                 <View style={styles.headerRight}>
-                  <HeaderMenuButton />
+                  <HeaderMenuButton dropdownEdge="trailing" modalStackHeader />
                 </View>
               ),
             }}

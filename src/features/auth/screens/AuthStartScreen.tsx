@@ -127,7 +127,10 @@ export function AuthStartScreen({ navigation, route }: Props) {
     () =>
       StyleSheet.create({
         container: {
-          flex: 1,
+          // flex:1 inside ScrollView pins height to the viewport and blocks scrolling
+          // when the keyboard shrinks the window (Android). flexGrow keeps centering
+          // when there is extra space while allowing the content to extend and scroll.
+          flexGrow: 1,
           justifyContent: 'center',
         },
         welcomeContainer: {
