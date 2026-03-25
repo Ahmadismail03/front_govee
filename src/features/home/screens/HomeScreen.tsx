@@ -201,14 +201,13 @@ const fabStyles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
+    paddingHorizontal: 20,
   },
   alignRight: {
     alignItems: 'flex-end',
-    paddingRight: 30,
   },
   alignLeft: {
     alignItems: 'flex-start',
-    paddingLeft: 30,
   },
   /** Centres the ring behind the FAB button */
   fabContainer: {
@@ -361,8 +360,8 @@ const serviceCardStyles = StyleSheet.create({
     flexShrink: 0,
   },
   footer: {
-    // RTL column: flex-end on cross-axis = physical left — pill sits at far left
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
+    marginStart: spacing.sm,
     marginTop: spacing.xs,
   },
   badge: {
@@ -377,7 +376,8 @@ const serviceCardStyles = StyleSheet.create({
     color: '#C4161C',
     fontFamily: systemFontFamily,
     lineHeight: Math.round(typography.xs * 1.4),
-    textAlign: 'left',
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
 });
 

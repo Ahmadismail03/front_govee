@@ -78,16 +78,17 @@ const currency = 'ILS';
         content: {
           paddingTop: spacing.lg,
           paddingBottom: spacing.lg,
-          paddingEnd: spacing.lg,
-          paddingStart: 0,
+          paddingLeft: spacing.lg,   // physical left
+          paddingRight: 0,           // flush against the right card edge
           gap: spacing.md,
         },
         categoryBadge: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.xs,
-          // RTL: flex-end = physical left — pill at far left, not auto
-          alignSelf: 'flex-end',
+          // RTL: flex-start = physical right; marginStart = physical right gap
+          alignSelf: 'flex-start',
+          marginStart: spacing.sm,
           backgroundColor: colors.primaryLight,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.xs,
@@ -97,22 +98,24 @@ const currency = 'ILS';
           fontSize: typography.xs,
           fontWeight: typography.semibold,
           color: colors.primary,
-          textAlign: 'left',
+          textAlign: 'right',
+          writingDirection: 'rtl',
         },
         titleRow: {
           width: '100%',
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          justifyContent: 'flex-start',
+          flexDirection: 'row-reverse', // chevron always on physical right
+          alignItems: 'flex-end',
           gap: spacing.sm,
         },
         name: {
-          flexShrink: 1,
+          flex: 1,
           fontSize: typography.xl,
           fontWeight: typography.bold,
           color: colors.text,
           lineHeight: typography.xl * typography.tight,
-          textAlign: 'right',
+          textAlign: 'left',
+          marginStart: spacing.sm,
+          writingDirection: 'rtl',
         },
         detailsButton: {
           padding: spacing.xs,
@@ -147,30 +150,27 @@ const currency = 'ILS';
           flex: 1,
           gap: spacing.xs,
           minWidth: 0,
-          direction: 'ltr',
-          alignItems: 'flex-end',
+          alignItems: 'flex-start',
         },
         detailLabel: {
           fontSize: typography.xs,
           color: colors.textTertiary,
           fontWeight: typography.medium,
-          textAlign: 'right',
-          writingDirection: 'rtl',
+          textAlign: 'left',
           alignSelf: 'stretch',
         },
         detailValue: {
           fontSize: typography.sm,
           color: colors.text,
           fontWeight: typography.semibold,
-          textAlign: 'right',
-          writingDirection: 'rtl',
+          textAlign: 'left',
         },
         feesValueRow: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.xs,
           alignSelf: 'stretch',
-          justifyContent: 'flex-end',
+          justifyContent: 'flex-start',
         },
         feesDropdown: {
           borderWidth: 1,
@@ -196,15 +196,13 @@ const currency = 'ILS';
           flexShrink: 1,
           fontSize: typography.xs,
           fontWeight: typography.medium,
-          textAlign: 'right',
-          writingDirection: 'rtl',
+          textAlign: 'left',
         },
         feeAmount: {
           fontSize: typography.xs,
           fontWeight: typography.semibold,
           flexShrink: 0,
           textAlign: 'right',
-          writingDirection: 'ltr',
         },
         infoSection: {
           flexDirection: 'row',
@@ -234,8 +232,6 @@ const currency = 'ILS';
       style={({ pressed }) => [
         styles.card,
         pressed && styles.cardPressed,
-        // Force RTL so text is at the far RIGHT and chevron at the far LEFT.
-        { direction: 'rtl' } as any,
       ]}
       onPress={onPress}
       accessibilityRole="button"
