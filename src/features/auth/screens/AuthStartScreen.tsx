@@ -205,11 +205,6 @@ export function AuthStartScreen({ navigation, route }: Props) {
             value={nationalId}
             onChangeText={setNationalId}
             style={styles.rtlInput}
-            labelStyle={
-              isRtl
-                ? ({ textAlign: 'left', writingDirection: 'rtl' } as const)
-                : undefined
-            }
             keyboardType="number-pad"
             autoCapitalize="none"
             placeholder={t('auth.nationalIdPlaceholder')}
@@ -220,11 +215,6 @@ export function AuthStartScreen({ navigation, route }: Props) {
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             style={styles.rtlInput}
-            labelStyle={
-              isRtl
-                ? ({ textAlign: 'left', writingDirection: 'rtl' } as const)
-                : undefined
-            }
             keyboardType="phone-pad"
             autoCapitalize="none"
             placeholder={t('auth.phoneNumberPlaceholder')}

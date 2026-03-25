@@ -33,7 +33,7 @@ export function TextField({
           fontSize: typography.sm,
           fontWeight: typography.medium,
           color: colors.text,
-          textAlign: isRtl ? 'right' : 'left',
+          textAlign: 'left',
           writingDirection: isRtl ? 'rtl' : 'ltr',
           width: '100%',
           alignSelf: 'stretch',
