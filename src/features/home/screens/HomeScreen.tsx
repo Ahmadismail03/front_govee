@@ -144,24 +144,53 @@ function VoiceFAB({
   side: 'left' | 'right';
   bottomOffset: number;
 }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.55)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(pulse, { toValue: 1.6, duration: 950, useNativeDriver: true }),
+          Animated.timing(pulseOpacity, { toValue: 0, duration: 950, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(pulse, { toValue: 1, duration: 0, useNativeDriver: true }),
+          Animated.timing(pulseOpacity, { toValue: 0.55, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse, pulseOpacity]);
+
   return (
     <View
       style={[
         fabStyles.wrapper,
-        side === 'left' ? fabStyles.alignLeft : fabStyles.alignRight,
+        side === 'right' ? fabStyles.alignLeft : fabStyles.alignRight,
         { bottom: bottomOffset },
       ]}
       pointerEvents="box-none"
     >
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.85}
-        style={fabStyles.fab}
-        accessibilityRole="button"
-        accessibilityLabel="Voice Assistant"
-      >
-        <Ionicons name="mic-outline" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
+      {/* Container so ring and FAB share the same centre point */}
+      <View style={fabStyles.fabContainer}>
+        <Animated.View
+          style={[
+            fabStyles.ring,
+            { transform: [{ scale: pulse }], opacity: pulseOpacity },
+          ]}
+        />
+        <TouchableOpacity
+          onPress={onPress}
+          activeOpacity={0.85}
+          style={fabStyles.fab}
+          accessibilityRole="button"
+          accessibilityLabel="Voice Assistant"
+        >
+          <Ionicons name="mic-outline" size={26} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -180,6 +209,21 @@ const fabStyles = StyleSheet.create({
   alignLeft: {
     alignItems: 'flex-start',
     paddingLeft: 30,
+  },
+  /** Centres the ring behind the FAB button */
+  fabContainer: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  /** Pulsing ring — same size as FAB; scale animation enlarges it */
+  ring: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#C4161C',
   },
   fab: {
     width: 56,
