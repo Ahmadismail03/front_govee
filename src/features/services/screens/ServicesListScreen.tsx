@@ -175,7 +175,7 @@ export function ServicesListScreen({ navigation }: Props) {
   const showPagination = totalPages > 1;
 
   return (
-    <Screen>
+    <Screen edges={['left', 'right']}>
       <FlatList
         ref={listRef}
         data={services}
@@ -379,7 +379,6 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
   },
   list: {
     gap: spacing.lg,
-    paddingBottom: spacing.xxxl,
   },
   paginationWrap: {
     flexDirection: 'row',

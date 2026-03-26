@@ -1,5 +1,5 @@
-import React, { useEffect, useLayoutEffect, useMemo } from 'react';
-import { StyleSheet, Text, View, Image } from 'react-native';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, View, Image, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -28,6 +28,21 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
   const svc = services.find((s) => s.id === appt?.serviceId);
   const pref = useReminderPreferencesStore((s) => s.pref);
   const loadPref = useReminderPreferencesStore((s) => s.load);
+
+  const cancel = useAppointmentsStore((s) => s.cancel);
+  const isCanceling = useAppointmentsStore((s) => s.isLoading);
+  const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
+
+  const handleConfirmCancel = async () => {
+    if (!appt) return;
+    try {
+      await cancel(appt.id);
+      setIsCancelModalVisible(false);
+      navigation.navigate('MainTabs', { screen: 'AppointmentsTab' });
+    } catch {
+      setIsCancelModalVisible(false);
+    }
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: isRtl ? '' : t('appointments.details') });
@@ -128,7 +143,7 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
         <Button
           title={t('appointments.cancel')}
           disabled={!canManage}
-          onPress={() => navigation.navigate('AppointmentCancelConfirm', { appointmentId: appt.id })}
+          onPress={() => setIsCancelModalVisible(true)}
           variant="secondary"
           style={styles.actionButton}
         />
@@ -140,6 +155,45 @@ export function AppointmentDetailsScreen({ navigation, route }: Props) {
           style={styles.actionButton}
         />
       </View>
+      {/* Cancel Confirmation Modal */}
+      <Modal
+        visible={isCancelModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsCancelModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { textAlign: isRtl ? 'left' : 'right' }]}>
+              {isRtl ? 'تأكيد الإلغاء' : 'Cancel Appointment'}
+            </Text>
+            <Text style={[styles.modalMessage, { textAlign: isRtl ? 'left' : 'right' }]}>
+              {isRtl ? 'هل أنت متأكد من إلغاء الموعد؟' : 'Are you sure you want to cancel this appointment?'}
+            </Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setIsCancelModalVisible(false)}
+                disabled={isCanceling}
+              >
+                <Text style={styles.modalCancelText}>{isRtl ? 'لا' : 'No'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={handleConfirmCancel}
+                disabled={isCanceling}
+              >
+                {isCanceling ? (
+                  <ActivityIndicator color={colors.textSecondary} size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>{isRtl ? 'نعم' : 'Yes, Cancel'}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -225,6 +279,56 @@ const createStyles = (colors: ThemeColors) =>
       marginTop: spacing.md,
       marginBottom: spacing.lg,
       lineHeight: typography.sm * typography.relaxed,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.xl,
+    },
+    modalContent: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: borderRadius.lg,
+      padding: spacing.xl,
+      width: '100%',
+      ...shadows.md,
+    },
+    modalTitle: {
+      fontSize: typography.lg,
+      fontWeight: typography.bold,
+      color: colors.text,
+      marginBottom: spacing.md,
+    },
+    modalMessage: {
+      fontSize: typography.base,
+      color: colors.textSecondary,
+      marginBottom: spacing.xl,
+      lineHeight: typography.base * typography.relaxed,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing.lg,
+      alignItems: 'center',
+    },
+    modalCancelButton: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+    },
+    modalCancelText: {
+      fontSize: typography.base,
+      color: colors.primary,
+      fontWeight: typography.medium,
+    },
+    modalConfirmButton: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+    },
+    modalConfirmText: {
+      fontSize: typography.base,
+      color: '#D32F2F',
+      fontWeight: typography.medium,
     },
   });
 

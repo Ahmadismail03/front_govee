@@ -230,7 +230,7 @@ export function BookingSelectDateScreen({ navigation, route }: Props) {
              */
             renderArrow={(direction) => (
               <Ionicons
-                name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+                name={direction === 'left' ? 'chevron-forward' : 'chevron-back'}
                 size={20}
                 color={colors.primary}
               />

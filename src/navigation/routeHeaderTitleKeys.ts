@@ -15,7 +15,6 @@ export const ROUTE_HEADER_TITLE_KEYS: Partial<Record<keyof RootStackParamList, s
   BookingConfirm: 'booking.confirm',
   BookingSuccess: '',
   AppointmentDetails: 'appointments.details',
-  AppointmentCancelConfirm: 'appointments.cancel',
   AppointmentRescheduleSelectDate: 'appointments.reschedule',
   AppointmentRescheduleSelectSlot: 'appointments.reschedule',
   AppointmentRescheduleConfirm: 'appointments.reschedule',

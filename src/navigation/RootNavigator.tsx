@@ -14,7 +14,6 @@ import { BookingSelectSlotScreen } from '../features/booking/screens/BookingSele
 import { BookingConfirmScreen } from '../features/booking/screens/BookingConfirmScreen';
 import { BookingSuccessScreen } from '../features/booking/screens/BookingSuccessScreen';
 import { AppointmentDetailsScreen } from '../features/appointments/screens/AppointmentDetailsScreen';
-import { AppointmentCancelConfirmScreen } from '../features/appointments/screens/AppointmentCancelConfirmScreen';
 import { AppointmentRescheduleSelectDateScreen } from '../features/appointments/screens/AppointmentRescheduleSelectDateScreen';
 import { AppointmentRescheduleSelectSlotScreen } from '../features/appointments/screens/AppointmentRescheduleSelectSlotScreen';
 import { AppointmentRescheduleConfirmScreen } from '../features/appointments/screens/AppointmentRescheduleConfirmScreen';
@@ -247,16 +246,6 @@ export function RootNavigator() {
             )}
           </Stack.Screen>
 
-          <Stack.Screen name="AppointmentCancelConfirm" options={{ presentation: 'modal' }}>
-            {(props) => (
-              <RequireAuth
-                navigation={props.navigation}
-                redirect={{ screen: 'AppointmentCancelConfirm', params: props.route.params }}
-              >
-                <AppointmentCancelConfirmScreen {...props} />
-              </RequireAuth>
-            )}
-          </Stack.Screen>
           <Stack.Screen name="AppointmentRescheduleSelectDate">
             {(props) => (
               <RequireAuth

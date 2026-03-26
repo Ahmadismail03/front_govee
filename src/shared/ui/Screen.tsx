@@ -1,6 +1,6 @@
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Image } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets, Edge } from 'react-native-safe-area-context';
 import { spacing } from '../theme/tokens';
 import { useThemeColors } from '../theme/useTheme';
 import { useRtl } from '../../core/i18n/useRtl';
@@ -9,16 +9,17 @@ type Props = {
   children: React.ReactNode;
   scroll?: boolean;
   keyboardAvoiding?: boolean;
+  edges?: readonly Edge[];
 };
 
-export function Screen({ children, scroll, keyboardAvoiding }: Props) {
+export function Screen({ children, scroll, keyboardAvoiding, edges = ['left', 'right', 'bottom'] }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { isRtl } = useRtl();
 
   const keyboardVerticalOffset = insets.top;
-  // SafeAreaView handles the bottom inset via edges; add extra comfortable spacing on top of that.
-  const bottomPad = spacing.xl;
+  // SafeAreaView handles the bottom inset via edges; remove extra spacing to sit flush.
+  const bottomPad = 0;
 
   const styles = React.useMemo(
     () =>
@@ -82,7 +83,7 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
 
   if (!keyboardAvoiding) {
     return (
-      <SafeAreaView style={[styles.root, iosRtlStyle]} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView style={[styles.root, iosRtlStyle]} edges={edges}>
         <Image 
           source={require('../../../assets/logo.png')} 
           style={styles.watermark} 
@@ -94,7 +95,7 @@ export function Screen({ children, scroll, keyboardAvoiding }: Props) {
   }
 
   return (
-    <SafeAreaView style={[styles.root, iosRtlStyle]} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={[styles.root, iosRtlStyle]} edges={edges}>
       <Image 
         source={require('../../../assets/logo.png')} 
         style={styles.watermark} 

@@ -39,7 +39,6 @@ export type RootStackParamList = {
 
   AppointmentDetails: { appointmentId: string };
 
-  AppointmentCancelConfirm: { appointmentId: string };
   AppointmentRescheduleSelectDate: { appointmentId: string };
   AppointmentRescheduleSelectSlot: { appointmentId: string; date: string };
   AppointmentRescheduleConfirm: { appointmentId: string; date: string; slotId: string };

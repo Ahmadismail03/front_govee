@@ -2,6 +2,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { Alert, DevSettings, I18nManager } from 'react-native';
 import * as Updates from 'expo-updates';
+import { LocaleConfig } from 'react-native-calendars';
 import { StorageKeys } from '../storage/keys';
 import { getSecureItem, setSecureItem } from '../storage/secureStorage';
 import { ar } from './resources/ar';
@@ -22,6 +23,22 @@ function shouldUseRtl(language: SupportedLanguage): boolean {
 
 function ensureI18nInitialized(): void {
   if (i18n.isInitialized) return;
+
+  // Set up React Native Calendars localization
+  LocaleConfig.locales['ar'] = {
+    monthNames: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+    monthNamesShort: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+    dayNames: ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
+    dayNamesShort: ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'],
+    today: 'اليوم',
+  };
+  LocaleConfig.locales['en'] = {
+    monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    monthNamesShort: ['Jan', 'Feb', 'Mar', 'Apr', '+May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    dayNames: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    dayNamesShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    today: 'Today',
+  };
 
   // Initialize synchronously (fire-and-forget) so `useTranslation()` always has an instance.
   // Language + RTL direction is finalized in `initI18n()`.
@@ -69,6 +86,8 @@ export async function initI18n(): Promise<void> {
   // Default to Arabic for this Palestinian government app
   const language: SupportedLanguage = saved ?? 'ar';
 
+  LocaleConfig.defaultLocale = language;
+
   if (i18n.language !== language) {
     await i18n.changeLanguage(language);
   }
@@ -106,6 +125,7 @@ export async function setAppLanguage(
   // Persist and switch translation strings immediately
   await setSecureItem(StorageKeys.language, language);
   await i18n.changeLanguage(language);
+  LocaleConfig.defaultLocale = language;
 
   // Apply RTL/LTR — MUST happen before reload
   I18nManager.allowRTL(true);
