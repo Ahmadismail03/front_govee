@@ -39,6 +39,7 @@ export function AppointmentsListScreen({ navigation }: Props) {
   const error = useAppointmentsStore((s) => s.error);
   const appointments = useAppointmentsStore((s) => s.appointments);
   const [segment, setSegment] = useState<'UPCOMING' | 'PAST'>('UPCOMING');
+  const forceLeftLayout = segment === 'PAST';
 
   useEffect(() => {
     if (token) load();
@@ -62,8 +63,8 @@ export function AppointmentsListScreen({ navigation }: Props) {
   return (
     <Screen>
       {/* Title + icon under the red bar; Arabic: both on physical right (icon at edge). */}
-      <View style={[styles.header, isRtl ? styles.headerRtl : styles.headerLtr]}>
-        {isRtl ? (
+      <View style={[styles.header, isRtl && !forceLeftLayout ? styles.headerRtl : styles.headerLtr]}>
+        {isRtl && !forceLeftLayout ? (
           <>
             <View style={[styles.headerTextContainer, styles.headerTextContainerRtl]}>
               <RtlPhysicalRightBlock isRtl={isRtl}>
@@ -127,6 +128,7 @@ export function AppointmentsListScreen({ navigation }: Props) {
             item={item}
             colors={colors}
             styles={styles}
+            forceLeftLayout={forceLeftLayout}
             onPress={() =>
               navigation.getParent()?.navigate('AppointmentDetails' as any, {
                 appointmentId: item.id,
@@ -147,13 +149,20 @@ function AppointmentRow({
   onPress,
   colors,
   styles,
+  forceLeftLayout = false,
 }: {
   item: Appointment;
   onPress: () => void;
   colors: ThemeColors;
   styles: Styles;
+  forceLeftLayout?: boolean;
 }) {
   const { t } = useTranslation();
+  const { isRtl } = useRtl();
+  const useRtlRowLayout = isRtl && !forceLeftLayout;
+  const textDirStyle = useRtlRowLayout
+    ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
+    : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const });
   const statusColor =
     item.status === 'UPCOMING'
       ? colors.success
@@ -192,25 +201,29 @@ function AppointmentRow({
             resizeMode="cover"
           />
         </View>
-        <View style={styles.rowContent}>
-          <Text style={styles.rowTitle} numberOfLines={1}>
-            {item.serviceName}
-          </Text>
-          <View style={styles.rowMeta}>
+        <View style={[styles.rowContent, useRtlRowLayout && styles.rowContentRtl]}>
+          <View style={[styles.rowTitleLine, useRtlRowLayout && styles.rowTitleLineRtlLeft]}>
+            <View style={[styles.statusBadge, { backgroundColor: statusColor }]} />
+            <Text style={[styles.rowTitle, useRtlRowLayout ? styles.rowTitleRtlLeft : textDirStyle]} numberOfLines={1}>
+              {item.serviceName}
+            </Text>
+          </View>
+          <View style={[styles.rowMeta, useRtlRowLayout && styles.rowMetaRtl]}>
             <Ionicons name="time-outline" size={iconSizes.xs} color={colors.textSecondary} />
-            <Text style={styles.rowMetaText}>
+            <Text style={[styles.rowMetaText, textDirStyle]}>
               {item.date}  {timeRange}
             </Text>
           </View>
-          <View style={styles.rowMeta}>
+          <View style={[styles.rowMeta, useRtlRowLayout && styles.rowMetaRtl]}>
             <Ionicons name="receipt-outline" size={iconSizes.xs} color={colors.textSecondary} />
-            <Text style={styles.rowMetaText}>{item.referenceNumber}</Text>
+            <Text style={[styles.rowMetaText, textDirStyle]}>{item.referenceNumber}</Text>
           </View>
-          <Text style={styles.rowDescription} numberOfLines={2}>
-            {statusText}
-          </Text>
+          <View style={[styles.rowStatusLine, useRtlRowLayout && styles.rowStatusLineRtlLeft]}>
+            <Text style={[styles.rowDescription, useRtlRowLayout ? styles.rowDescriptionRtlLeft : textDirStyle]} numberOfLines={2}>
+              {statusText}
+            </Text>
+          </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusColor }]} />
       </View>
     </Pressable>
   );
@@ -301,6 +314,7 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: typography.sm,
       color: colors.textSecondary,
       lineHeight: typography.sm * typography.relaxed,
+      textAlign: 'left',
     },
     list: {
       gap: spacing.md,
@@ -338,24 +352,61 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
       gap: spacing.xs,
     },
+    rowContentRtl: {
+      alignItems: 'flex-end',
+    },
     rowTitle: {
       fontSize: typography.base,
       fontWeight: typography.semibold,
       color: colors.text,
+      flex: 1,
+    },
+    rowTitleLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      alignSelf: 'stretch',
+    },
+    rowTitleLineRtlLeft: {
+      justifyContent: 'flex-start',
+    },
+    rowTitleRtlLeft: {
+      textAlign: 'left',
+      writingDirection: 'rtl',
     },
     rowMeta: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.xs,
     },
+    rowMetaRtl: {
+      flexDirection: 'row-reverse',
+      justifyContent: 'flex-end',
+      alignSelf: 'stretch',
+    },
     rowMetaText: {
       fontSize: typography.sm,
       color: colors.textSecondary,
+      textAlign: 'right',
     },
     rowDescription: {
       fontSize: typography.sm,
       color: colors.textSecondary,
+      alignSelf: 'stretch',
+    },
+    rowDescriptionRtlLeft: {
+      textAlign: 'left',
+      writingDirection: 'rtl',
+    },
+    rowStatusLine: {
       marginTop: spacing.xs,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      alignSelf: 'stretch',
+    },
+    rowStatusLineRtlLeft: {
+      justifyContent: 'flex-start',
     },
     statusBadge: {
       width: 8,

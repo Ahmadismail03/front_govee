@@ -108,7 +108,12 @@ export function ServicesListScreen({ navigation }: Props) {
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={iconSizes.md} color={colors.textTertiary} style={styles.searchIcon} />
         <TextInput
-          style={styles.search}
+          style={[
+            styles.search,
+            isRtl
+              ? ({ textAlign: 'right', writingDirection: 'rtl' } as const)
+              : ({ textAlign: 'left', writingDirection: 'ltr' } as const),
+          ]}
           value={searchDraft}
           onChangeText={setSearchDraft}
           returnKeyType="search"

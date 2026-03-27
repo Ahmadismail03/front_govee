@@ -323,16 +323,19 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isRtl: boolean)
       color: colors.textSecondary,
       lineHeight: typography.base * typography.relaxed,
       marginBottom: spacing.md,
+      textAlign: 'left',
+      writingDirection: 'rtl',
     },
     descriptionPoints: {
       gap: spacing.sm,
       marginTop: spacing.md,
     },
-    // flexDirection:'row' + I18nManager RTL → first child (icon) on the RIGHT,
-    // text follows to the LEFT — correct Arabic bullet-point layout.
     pointItem: {
       flexDirection: 'row',
+      // Keep checks pinned to the physical right.
+      direction: 'rtl',
       alignItems: 'center',
+      alignSelf: 'stretch',
       gap: spacing.sm,
     },
     pointText: {
@@ -340,6 +343,8 @@ const createStyles = (colors: ReturnType<typeof useThemeColors>, isRtl: boolean)
       fontSize: typography.sm,
       color: colors.text,
       lineHeight: typography.sm * typography.relaxed,
+      textAlign: 'left',
+      writingDirection: 'rtl',
     },
     calendarContainer: {
       marginBottom: spacing.xl,

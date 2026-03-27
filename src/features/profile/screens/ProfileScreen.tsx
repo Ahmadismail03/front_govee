@@ -132,6 +132,9 @@ export function ProfileScreen({ navigation }: Props) {
           marginTop: spacing.sm,
           alignSelf: 'flex-start',
         },
+        changePhotoRtl: {
+          alignSelf: 'flex-end',
+        },
         card: {
           backgroundColor: colors.cardBackground,
           borderWidth: 1,
@@ -219,7 +222,7 @@ export function ProfileScreen({ navigation }: Props) {
           {t('profile.verifiedSub')}
         </Text>
       </RtlPhysicalRightBlock>
-      <View style={styles.changePhoto}>
+      <View style={[styles.changePhoto, isRtl && styles.changePhotoRtl]}>
         <Button title={t('profile.editProfileButton')} variant="secondary" onPress={() => navigateTo('ProfileEdit')} />
       </View>
     </View>
