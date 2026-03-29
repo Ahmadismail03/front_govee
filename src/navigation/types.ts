@@ -27,7 +27,6 @@ export type RootStackParamList = {
   AuthOtp: {
     nationalId: string;
     phoneNumber: string;
-    devOtp?: string;
     expiresAt?: string;
     redirect?: RedirectTarget;
   };

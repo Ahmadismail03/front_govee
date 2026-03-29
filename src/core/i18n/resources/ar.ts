@@ -381,8 +381,6 @@ export const ar = {
     otpSentTo: 'تم إرسال الرمز إلى',
     codeSentTo: 'تم إرسال الرمز إلى {{phone}}',
     verify: 'تحقق',
-    mockedHint: 'رمز التحقق التجريبي هو 123456',
-    mockOtpHint: 'رمز التحقق (DEV): {{otp}}',
     needHelp: 'تحتاج مساعدة؟ تواصل معنا',
     register: 'إنشاء حساب',
     registerTitle: 'إنشاء حساب',

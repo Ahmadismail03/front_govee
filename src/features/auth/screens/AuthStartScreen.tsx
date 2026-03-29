@@ -74,7 +74,6 @@ export function AuthStartScreen({ navigation, route }: Props) {
           navigation.replace('AuthOtp', {
             nationalId: nid,
             phoneNumber: phone,
-            devOtp: res.otp,
             expiresAt: res.expiresAt,
             redirect,
           });
@@ -104,7 +103,6 @@ export function AuthStartScreen({ navigation, route }: Props) {
       navigation.replace('AuthOtp', {
         nationalId: nid,
         phoneNumber: phone,
-        devOtp: res.otp,
         expiresAt: res.expiresAt,
         redirect,
       });

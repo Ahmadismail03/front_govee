@@ -381,8 +381,6 @@ export const en = {
     otpSentTo: 'Code sent to',
     codeSentTo: 'Code sent to {{phone}}',
     verify: 'Verify',
-    mockedHint: 'Mocked OTP is 123456',
-    mockOtpHint: 'DEV OTP: {{otp}}',
     needHelp: 'Need help? Contact us',
     register: 'Create an account',
     registerTitle: 'Create account',

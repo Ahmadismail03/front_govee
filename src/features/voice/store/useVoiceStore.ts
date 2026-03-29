@@ -12,7 +12,6 @@ type PendingAuthData = {
   nationalId?: string;
   phoneNumber?: string;
   fullName?: string;
-  otp?: string;
 };
 
 type VoiceState = {
@@ -68,10 +67,6 @@ function pickAuthValue(
 
   if (m.includes('اسمك') && data.fullName) {
     return data.fullName;
-  }
-
-  if (m.includes('رمز') && data.otp) {
-    return data.otp;
   }
 
   return null;
@@ -211,9 +206,6 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
                 : {}),
               ...(value === pendingAuthData.fullName
                 ? { fullName: undefined }
-                : {}),
-              ...(value === pendingAuthData.otp
-                ? { otp: undefined }
                 : {}),
             },
           });

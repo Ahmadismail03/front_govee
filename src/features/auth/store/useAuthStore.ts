@@ -29,7 +29,6 @@ type AuthState = {
     nationalId?: string;
     phoneNumber?: string;
     fullName?: string;
-    otp?: string;
   } | null;
   setToken: (token: string | null) => void;
   setAuthStatus: (status: AuthStatus) => void;
@@ -168,17 +167,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await setSecureItem(StorageKeys.authUser, JSON.stringify(res.user));
       setSessionToken(res.token);
       
-      // Update collected auth data with OTP
-      const currentData = get().collectedAuthData;
-      if (currentData) {
-        const updated = { ...currentData, otp };
-        set({ collectedAuthData: updated });
-
-        const voiceStore = useVoiceStore.getState();
-        if (voiceStore.authTriggeredByVoice) {
-          voiceStore.setPendingAuthData(updated);
-        }
-      }
       set({
         token: res.token,
         user: res.user,

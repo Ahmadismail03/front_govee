@@ -208,20 +208,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
           width: '100%',
           height: '100%',
         },
-        hintCard: {
-          backgroundColor: themeColors.infoLight,
-          borderRadius: borderRadius.md,
-          padding: spacing.md,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.sm,
-          marginTop: spacing.sm,
-        },
-        hintText: {
-          flex: 1,
-          fontSize: typography.sm,
-          color: themeColors.info,
-        },
+
         supportLink: {
           marginTop: spacing.lg,
           alignItems: 'center',
@@ -284,12 +271,6 @@ export function AuthOtpScreen({ navigation, route }: Props) {
             ))}
           </View>
 
-          {route.params?.devOtp ? (
-            <View style={styles.hintCard}>
-              <Ionicons name="information-circle-outline" size={20} color={themeColors.info} />
-              <Text style={styles.hintText}>{t('auth.mockOtpHint', { otp: route.params.devOtp })}</Text>
-            </View>
-          ) : null}
           {otpError ? (
             <Text style={styles.otpErrorText}>{otpError}</Text>
           ) : null}
