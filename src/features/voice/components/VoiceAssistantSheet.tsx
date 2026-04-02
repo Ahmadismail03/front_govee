@@ -35,6 +35,11 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
   const playStartTime = Date.now();
   console.log(`🎵 [playTts] START - voiceMode=${voiceMode}, audioLength=${base64Audio?.length || 0} bytes`);
 
+  if (!base64Audio || base64Audio.length < 10) {
+    console.warn('⚠️ [playTts] Received empty or invalid base64Audio. Aborting playback.');
+    return;
+  }
+
   // Stop and unload previous sound if exists
   if (currentSound) {
     try {
@@ -66,7 +71,10 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
     }).then(() =>
       Audio.Sound.createAsync(
         { uri },
-        { progressUpdateIntervalMillis: 50 }
+        { 
+          progressUpdateIntervalMillis: 50,
+          androidImplementation: 'MediaPlayer' 
+        }
       )
     ),
   ]);
@@ -194,6 +202,42 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       .catch((err) => console.warn("⚠️ Failed to persist voice session:", err));
 
     setIsSessionReady(true);
+
+    // ── Post-auth reopen ──────────────────────────────────────────────────────
+    // When the sheet reopens after the user completed OTP verification:
+    //  • mark the session as already started (the user already spoke once)
+    //  • play the backend's deferred audio (stored before we left for auth)
+    //  • then auto-resume the mic so the user can continue seamlessly
+    // If no audio was cached, skip straight to auto-resuming the mic.
+    if (voice.authTriggeredByVoice) {
+      voice.setAuthTriggeredByVoice(false);
+      setHasStartedSession(true); // UI: show active session, hide "Tap to speak"
+
+      const audio = voice.pendingAudio;
+      const audioMode = voice.pendingAudioMode ?? voice.voiceMode;
+
+      // Clear immediately so a second open doesn't replay the same clip
+      if (audio) voice.setPendingAudio(null);
+
+      if (audio) {
+        console.log('🎵 Playing deferred IDENTITY audio after auth');
+        setRecordingState('playing');
+        playTts(audio, audioMode)
+          .then(() => {
+            setRecordingState('idle');
+            // Auto-start mic so the user can re-ask their request
+            useVoiceStore.getState().setShouldResumeListening(true);
+          })
+          .catch((err) => {
+            console.error('❌ Post-auth audio playback error:', err);
+            setRecordingState('error');
+          });
+      } else {
+        // No deferred audio — go straight to listening
+        console.log('🎤 No deferred audio; auto-starting mic after auth');
+        useVoiceStore.getState().setShouldResumeListening(true);
+      }
+    }
   }, [isOpen]);
 
   const shouldResumeListening = useVoiceStore((s) => s.shouldResumeListening);
@@ -230,14 +274,20 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         console.log("🔐 Identity stage detected — closing sheet and navigating to AuthStart");
         // Stop recording if still active
         try { await stopRecording(); } catch { /* ignore */ }
+
+        // NOTE: We intentionally do NOT store decision.audioBase64 here.
+        // That audio is the identity-prompt ("tell me your ID") which is stale
+        // once auth completes. The correct post-auth audio arrives from
+        // /decision/auth/sync inside verifyOtp and is stored there instead.
+
         // Mark that the sheet should reopen once auth completes
         setPendingReopenAfterAuth(true);
         setAuthTriggeredByVoice(true);
         setRecordingState("idle");
         // Close the sheet before navigating so it doesn't sit behind the auth screens
         setIsOpen(false);
-        // Navigate to the proper auth screen
-        onNavigate?.('AuthStart', {});
+        // Navigate to the proper auth screen and instruct OTP to return here
+        onNavigate?.('AuthStart', { redirect: { screen: 'VOICE_RETURN' } });
         return;
       }
 
@@ -744,9 +794,10 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       textAlign: 'center',
     },
     emptySub: {
-      fontSize: typography.base,
+      fontSize: typography.xl,
       color: colors.textSecondary,
       alignSelf: 'stretch',  // stretch to full width so textAlign works
+      marginBottom: spacing.lg,
     },
     examples: {
       alignSelf: 'stretch',
@@ -754,8 +805,8 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       borderRadius: borderRadius.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      borderStartWidth: 4,
-      borderStartColor: colors.primary,
+      borderRightWidth: 4,
+      borderRightColor: colors.primary,
       padding: spacing.md,
       gap: spacing.sm,
       ...shadows.sm,
@@ -763,7 +814,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
 
     example: {
       alignSelf: 'stretch',
-      fontSize: typography.sm,
+      fontSize: typography.lg,
       color: colors.textSecondary,
     },
     responseCard: {

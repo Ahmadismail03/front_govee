@@ -35,6 +35,12 @@ type VoiceState = {
   pendingReopenAfterAuth: boolean;
   setPendingReopenAfterAuth: (v: boolean) => void;
 
+  /** Audio (base64) returned by the backend at the IDENTITY stage, held until
+   *  the voice sheet reopens after the user completes authentication. */
+  pendingAudio: string | null;
+  pendingAudioMode: 'speaker' | 'earpiece';
+  setPendingAudio: (audio: string | null, mode?: 'speaker' | 'earpiece') => void;
+
   setIsOpen: (open: boolean) => void;
   setRecordingState: (state: VoiceRecordingState) => void;
   clear: () => void;
@@ -89,6 +95,11 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   pendingReopenAfterAuth: false,
   setPendingReopenAfterAuth: (v) => set({ pendingReopenAfterAuth: v }),
 
+  pendingAudio: null,
+  pendingAudioMode: 'speaker',
+  setPendingAudio: (audio, mode = 'speaker') =>
+    set({ pendingAudio: audio, pendingAudioMode: mode }),
+
   authTriggeredByVoice: false,
   pendingAuthData: null,
 
@@ -106,6 +117,8 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       pendingAuthData: null,
       pendingReopenAfterAuth: false,
       shouldResumeListening: false,
+      pendingAudio: null,
+      pendingAudioMode: 'speaker',
     }),
 
   setAuthTriggeredByVoice: (triggered) =>

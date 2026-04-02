@@ -229,38 +229,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
 
         if (decision.audioBase64) {
-          const audioBase64 = decision.audioBase64;
-
-          // The sheet may still be in the process of reopening (pendingReopenAfterAuth).
-          // Wait up to 2 s for it to open before playing.
-          const waitForSheetOpen = (): Promise<boolean> =>
-            new Promise((resolve) => {
-              const deadline = Date.now() + 2000;
-              const check = () => {
-                if (useVoiceStore.getState().isOpen) {
-                  resolve(true);
-                } else if (Date.now() >= deadline) {
-                  resolve(false);
-                } else {
-                  setTimeout(check, 50);
-                }
-              };
-              check();
-            });
-
-          const isSheetOpen = await waitForSheetOpen();
-          if (isSheetOpen) {
-            const voice = useVoiceStore.getState();
-            voice.setRecordingState("playing");
-            // Dynamic import avoids static circular dependency:
-            // useAuthStore -> VoiceAssistantSheet -> useAuthStore
-            const { playTts } = await import('../../voice/components/VoiceAssistantSheet');
-            await playTts(audioBase64, voice.voiceMode);
-            voice.setRecordingState("idle");
-            voice.setShouldResumeListening(true);
-          } else {
-            console.log("[AUTH→DECISION] Sheet never opened within 2 s — skipping audio");
-          }
+          // Store the correct post-auth audio so VoiceAssistantSheet's isOpen
+          // effect can play it the moment the sheet reopens — no polling, no race.
+          // This overwrites any stale audio that may have been stored earlier.
+          const voice = useVoiceStore.getState();
+          voice.setPendingAudio(decision.audioBase64, voice.voiceMode);
+          console.log('[AUTH→DECISION] Correct post-auth audio stored in pendingAudio');
         }
       }
 

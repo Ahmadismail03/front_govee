@@ -577,296 +577,299 @@ export function HomeScreen({ navigation }: Props) {
         }}
         ListHeaderComponent={
           <>
-              {/* ── Hero Carousel ────────────────────────────── */}
-              <View
-                style={{
-                  borderRadius: 24,
-                  overflow: 'hidden',
-                  marginBottom: spacing.xl,
-                  height: promoHeight,
-                  width: carouselWidth,
-                  alignSelf: 'center',
-                  ...shadows.lg,
+            {/* ── Hero Carousel ────────────────────────────── */}
+            <View
+              style={{
+                borderRadius: 24,
+                overflow: 'hidden',
+                marginBottom: spacing.xl,
+                height: promoHeight,
+                width: carouselWidth,
+                alignSelf: 'center',
+                ...shadows.lg,
+              }}
+            >
+              <FlatList
+                ref={(r) => { carouselRef.current = r; }}
+                data={promos}
+                horizontal
+                style={{ direction: 'ltr' }}
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(i) => i.key}
+                getItemLayout={(_, index) => ({
+                  length: carouselWidth,
+                  offset: carouselWidth * index,
+                  index,
+                })}
+                onScrollToIndexFailed={(info) => {
+                  carouselRef.current?.scrollToOffset({
+                    offset: info.averageItemLength * info.index,
+                    animated: true,
+                  });
                 }}
-              >
-                <FlatList
-                  ref={(r) => { carouselRef.current = r; }}
-                  data={promos}
-                  horizontal
-                  style={{ direction: 'ltr' }}
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  keyExtractor={(i) => i.key}
-                  getItemLayout={(_, index) => ({
-                    length: carouselWidth,
-                    offset: carouselWidth * index,
-                    index,
-                  })}
-                  onScrollToIndexFailed={(info) => {
-                    carouselRef.current?.scrollToOffset({
-                      offset: info.averageItemLength * info.index,
-                      animated: true,
-                    });
-                  }}
-                  onMomentumScrollEnd={(ev) => {
-                    const x = ev.nativeEvent.contentOffset.x;
-                    const idx = carouselWidth > 0 ? Math.round(x / carouselWidth) : 0;
-                    setCarouselIndex(Math.max(0, Math.min(idx, promos.length - 1)));
-                  }}
-                  nestedScrollEnabled
-                  renderItem={({ item }) => (
+                onMomentumScrollEnd={(ev) => {
+                  const x = ev.nativeEvent.contentOffset.x;
+                  const idx = carouselWidth > 0 ? Math.round(x / carouselWidth) : 0;
+                  setCarouselIndex(Math.max(0, Math.min(idx, promos.length - 1)));
+                }}
+                nestedScrollEnabled
+                renderItem={({ item }) => (
+                  <View style={{
+                    width: carouselWidth,
+                    height: promoHeight,
+                    backgroundColor: item.bgColor,
+                  }}>
+
+                    {/* Layer 1: Brand red wash — warm depth across all slides */}
+                    <View style={[
+                      StyleSheet.absoluteFillObject,
+                      { backgroundColor: 'rgba(196,22,28,0.15)' },
+                    ]} />
+
+                    {/* Layer 2: Bottom vignette — grounds the card */}
                     <View style={{
-                      width: carouselWidth,
-                      height: promoHeight,
-                      backgroundColor: item.bgColor,
-                    }}>
+                      position: 'absolute',
+                      bottom: 0, left: 0, right: 0,
+                      height: 64,
+                      backgroundColor: 'rgba(0,0,0,0.12)',
+                    }} />
 
-                      {/* Layer 1: Brand red wash — warm depth across all slides */}
-                      <View style={[
-                        StyleSheet.absoluteFillObject,
-                        { backgroundColor: 'rgba(196,22,28,0.15)' },
-                      ]} />
+                    {/* ── Content ── */}
 
-                      {/* Layer 2: Bottom vignette — grounds the card */}
-                      <View style={{
-                        position: 'absolute',
-                        bottom: 0, left: 0, right: 0,
-                        height: 64,
-                        backgroundColor: 'rgba(0,0,0,0.12)',
-                      }} />
-
-                      {/* ── Content ── */}
-
-                      <View
-                        style={{
-                          flex: 1,
-                          paddingVertical: spacing.lg,
-                          paddingHorizontal: spacing.lg + 4,
-                          paddingTop: spacing.lg + 10,
-                          flexDirection: isRtl ? 'row-reverse' : 'row',
-                          alignItems: 'flex-start',
-                          gap: spacing.md,
-                        }}
-                      >
-
-                        {/* Icon column */}
-                        <View style={{
-                          width: 64,
-                          height: 64,
-                          borderRadius: 20,
-                          backgroundColor: 'rgba(255,255,255,0.18)',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginTop: 2,
-                          flexShrink: 0,
-                        }}>
-                          <Ionicons name={item.icon as any} size={32} color="#FFFFFF" />
-                        </View>
-
-                        {/* Text column */}
-                        <View style={{ flex: 1, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-                          {/* Title */}
-                          <Text
-                            style={{
-                              color: '#FFFFFF',
-                              fontSize: typography.xl,
-                              fontWeight: typography.bold,
-                              letterSpacing: -0.5,
-                              lineHeight: item.titleLineHeight,
-                              marginBottom: item.titleSpacing,
-                              textAlign: isRtl ? 'right' : 'left',
-                            }}
-                          >
-                            {item.title}
-                          </Text>
-                          {/* Subtitle */}
-                          <Text
-                            style={{
-                              color: 'rgba(255,255,255,0.88)',
-                              fontSize: typography.sm,
-                              lineHeight: typography.sm * 1.6,
-                              flexShrink: 1,
-                              textAlign: isRtl ? 'right' : 'left',
-                            }}
-                          >
-                            {item.subtitle}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* ── Pill dots row at bottom ── */}
-                      <View style={{
-                        flexDirection: 'row',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        gap: 5,
-                        paddingBottom: spacing.md,
-                      }}>
-                        {promos.map((p, idx) => (
-                          <View
-                            key={p.key}
-                            style={{
-                              height: 5,
-                              width: idx === carouselIndex ? 24 : 5,
-                              borderRadius: 3,
-                              backgroundColor:
-                                idx === carouselIndex
-                                  ? '#FFFFFF'
-                                  : 'rgba(255,255,255,0.38)',
-                            }}
-                          />
-                        ))}
-                      </View>
-
-                    </View>
-                  )}
-                />
-              </View>
-
-              {/* ── Quick Actions Grid ──────────────────────── */}
-              <View style={{ marginBottom: spacing.lg }}>
-                {/* Section header */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    marginBottom: spacing.md,
-                    gap: spacing.sm,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 4,
-                      height: 22,
-                      borderRadius: 2,
-                      backgroundColor: '#C4161C',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Text
-                    style={{
-                      fontSize: typography.base,
-                      fontWeight: typography.bold,
-                      color: colors.text,
-                    }}
-                  >
-                    {t('home.quickActions')}
-                  </Text>
-                </View>
-
-                {/* 2-column rows */}
-                <View style={{ gap: spacing.md }}>
-                  {actionRows.map((row, ri) => (
                     <View
-                      key={ri}
                       style={{
+                        flex: 1,
+                        paddingVertical: spacing.lg,
+                        paddingHorizontal: spacing.lg + 4,
+                        paddingTop: spacing.lg + 10,
                         flexDirection: isRtl ? 'row-reverse' : 'row',
+                        alignItems: 'flex-start',
                         gap: spacing.md,
                       }}
                     >
-                      {row.map((item) => (
-                        <ActionGridCard
-                          key={item.key}
-                          item={item}
-                          colors={colors}
+
+                      {/* Icon column */}
+                      <View style={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: 20,
+                        backgroundColor: 'rgba(255,255,255,0.18)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: 2,
+                        flexShrink: 0,
+                      }}>
+                        <Ionicons name={item.icon as any} size={32} color="#FFFFFF" />
+                      </View>
+
+                      {/* Text column */}
+                      <View style={{ flex: 1, minWidth: 0, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
+                        {/* Title */}
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.75}
+                          style={{
+                            color: '#FFFFFF',
+                            fontSize: typography.xl,
+                            fontWeight: typography.bold,
+                            letterSpacing: -0.5,
+                            marginBottom: item.titleSpacing,
+                            textAlign: isRtl ? 'right' : 'left',
+                            flexShrink: 1,
+                          }}
+                        >
+                          {item.title}
+                        </Text>
+                        {/* Subtitle */}
+                        <Text
+                          style={{
+                            color: 'rgba(255,255,255,0.88)',
+                            fontSize: typography.sm,
+                            lineHeight: typography.sm * 1.6,
+                            flexShrink: 1,
+                            textAlign: isRtl ? 'right' : 'left',
+                          }}
+                        >
+                          {item.subtitle}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* ── Pill dots row at bottom ── */}
+                    <View style={{
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 5,
+                      paddingBottom: spacing.md,
+                    }}>
+                      {promos.map((p, idx) => (
+                        <View
+                          key={p.key}
+                          style={{
+                            height: 5,
+                            width: idx === carouselIndex ? 24 : 5,
+                            borderRadius: 3,
+                            backgroundColor:
+                              idx === carouselIndex
+                                ? '#FFFFFF'
+                                : 'rgba(255,255,255,0.38)',
+                          }}
                         />
                       ))}
-                      {/* Fill empty slot in last row if odd count */}
-                      {row.length === 1 && <View style={{ flex: 1 }} />}
                     </View>
-                  ))}
-                </View>
-              </View>
 
-              {/* ── Section Divider ─────────────────────────── */}
+                  </View>
+                )}
+              />
+            </View>
+
+            {/* ── Quick Actions Grid ──────────────────────── */}
+            <View style={{ marginBottom: spacing.lg }}>
+              {/* Section header */}
               <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginVertical: spacing.xl,
+                  marginBottom: spacing.md,
+                  gap: spacing.sm,
                 }}
               >
-                {/* Title + red marker — flex: 1 so it never collides with the button */}
                 <View
                   style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: spacing.sm,
-                    flex: 1,
-                    marginEnd: spacing.sm,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 4,
-                      height: 22,
-                      borderRadius: 2,
-                      backgroundColor: '#C4161C',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Text
-                    style={{
-                      fontSize: typography.base,
-                      fontWeight: typography.bold,
-                      color: colors.text,
-                      flexShrink: 1,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {t('home.featuredServices') ?? 'الخدمات الشائعة'}
-                  </Text>
-                </View>
-
-                {/* View All button — flexShrink: 0 keeps it from being squeezed */}
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('ServicesTab')}
-                  accessibilityRole="button"
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 4,
-                    borderWidth: 1.5,
-                    borderColor: '#9e9d9dff',
-                    borderRadius: borderRadius.full,
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.xs,
+                    width: 4,
+                    height: 22,
+                    borderRadius: 2,
+                    backgroundColor: '#C4161C',
                     flexShrink: 0,
                   }}
+                />
+                <Text
+                  style={{
+                    fontSize: typography.base,
+                    fontWeight: typography.bold,
+                    color: colors.text,
+                  }}
                 >
-                  <Text
-                    style={{
-                      fontSize: typography.xs,
-                      fontWeight: typography.semibold,
-                      color: '#C4161C',
-                    }}
-                  >
-                    {t('home.viewAll') ?? 'عرض الكل'}
-                  </Text>
-                  <Ionicons
-                    name={isRtl ? 'chevron-back' : 'chevron-forward'}
-                    size={12}
-                    color="#C4161C"
-                  />
-                </TouchableOpacity>
+                  {t('home.quickActions')}
+                </Text>
               </View>
 
-              {/* ── Featured Service Cards ──────────────────── */}
-              {featuredServices.length > 0 ? (
-                <View style={{ gap: spacing.md }}>
-                  {featuredServices.map((service) => (
-                    <ServiceCard
-                      key={service.id}
-                      service={service}
-                      colors={colors}
-                      onPress={() =>
-                        navigateTo('ServiceDetails', { serviceId: service.id, expandFees: true })
-                      }
-                    />
-                  ))}
-                </View>
-              ) : null}
+              {/* 2-column rows */}
+              <View style={{ gap: spacing.md }}>
+                {actionRows.map((row, ri) => (
+                  <View
+                    key={ri}
+                    style={{
+                      flexDirection: isRtl ? 'row-reverse' : 'row',
+                      gap: spacing.md,
+                    }}
+                  >
+                    {row.map((item) => (
+                      <ActionGridCard
+                        key={item.key}
+                        item={item}
+                        colors={colors}
+                      />
+                    ))}
+                    {/* Fill empty slot in last row if odd count */}
+                    {row.length === 1 && <View style={{ flex: 1 }} />}
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* ── Section Divider ─────────────────────────── */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginVertical: spacing.xl,
+              }}
+            >
+              {/* Title + red marker — flex: 1 so it never collides with the button */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.sm,
+                  flex: 1,
+                  marginEnd: spacing.sm,
+                }}
+              >
+                <View
+                  style={{
+                    width: 4,
+                    height: 22,
+                    borderRadius: 2,
+                    backgroundColor: '#C4161C',
+                    flexShrink: 0,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: typography.base,
+                    fontWeight: typography.bold,
+                    color: colors.text,
+                    flexShrink: 1,
+                  }}
+                  numberOfLines={1}
+                >
+                  {t('home.featuredServices') ?? 'الخدمات الشائعة'}
+                </Text>
+              </View>
+
+              {/* View All button — flexShrink: 0 keeps it from being squeezed */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ServicesTab')}
+                accessibilityRole="button"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  borderWidth: 1.5,
+                  borderColor: '#9e9d9dff',
+                  borderRadius: borderRadius.full,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.xs,
+                  flexShrink: 0,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: typography.xs,
+                    fontWeight: typography.semibold,
+                    color: '#C4161C',
+                  }}
+                >
+                  {t('home.viewAll') ?? 'عرض الكل'}
+                </Text>
+                <Ionicons
+                  name={isRtl ? 'chevron-back' : 'chevron-forward'}
+                  size={12}
+                  color="#C4161C"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Featured Service Cards ──────────────────── */}
+            {featuredServices.length > 0 ? (
+              <View style={{ gap: spacing.md }}>
+                {featuredServices.map((service) => (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    colors={colors}
+                    onPress={() =>
+                      navigateTo('ServiceDetails', { serviceId: service.id, expandFees: true })
+                    }
+                  />
+                ))}
+              </View>
+            ) : null}
           </>
         }
       />

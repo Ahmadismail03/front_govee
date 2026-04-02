@@ -32,7 +32,6 @@ import { SettingsScreen } from '../features/settings/screens/SettingsScreen';
 import { ProfileEditScreen } from '../features/profile/screens/ProfileEditScreen';
 import { VoiceAssistantSheet } from '../features/voice/components/VoiceAssistantSheet';
 import { useVoiceStore } from '../features/voice/store/useVoiceStore';
-import { useAuthStore } from '../features/auth/store/useAuthStore';
 import { useRtl } from '../core/i18n/useRtl';
 import { spacing } from '../shared/theme/tokens';
 
@@ -44,20 +43,34 @@ export function RootNavigator() {
   const { isRtl: rtl } = useRtl();
   const insets = useSafeAreaInsets();
 
-  // ── Reopen voice sheet after successful OTP auth ────────────────────────
-  const authStatus = useAuthStore((s) => s.authStatus);
-  const pendingReopenAfterAuth = useVoiceStore((s) => s.pendingReopenAfterAuth);
-  const setPendingReopenAfterAuth = useVoiceStore((s) => s.setPendingReopenAfterAuth);
-  const setVoiceIsOpen = useVoiceStore((s) => s.setIsOpen);
-
+  // ── Reopen voice sheet once the navigation stack truly settles at root ──────
+  //
+  // ⚠️  The old approach watched `authStatus` and called setVoiceIsOpen after
+  //    a fixed 100 ms timeout.  On iOS, presentation:'modal' dismiss animations
+  //    take ~350 ms, so the voice Modal was opening while the OTP modal was
+  //    still animating off-screen — causing audio to play behind a visible OTP
+  //    sheet and a broken UX.
+  //
+  //    The navigation 'state' event fires *after* the native animation completes
+  //    and the JS state is committed.  We check that the stack has collapsed
+  //    back to a single route (MainTabs) before opening the voice sheet, so it
+  //    always appears on top of a clean screen regardless of platform.
   React.useEffect(() => {
-    if (authStatus === 'authenticated' && pendingReopenAfterAuth) {
-      console.log('✅ Auth completed with voice pending — reopening voice sheet');
-      setPendingReopenAfterAuth(false);
-      // Small delay so navigation stack settles before the modal opens
-      setTimeout(() => setVoiceIsOpen(true), 100);
-    }
-  }, [authStatus, pendingReopenAfterAuth]);
+    const unsubscribe = navigationRef.addListener('state', () => {
+      const state = navigationRef.current?.getState();
+      if (
+        state?.routes?.length === 1 &&
+        state.routes[0]?.name === 'MainTabs' &&
+        useVoiceStore.getState().pendingReopenAfterAuth
+      ) {
+        console.log('✅ Stack settled at MainTabs with voice pending — reopening voice sheet');
+        useVoiceStore.getState().setPendingReopenAfterAuth(false);
+        // Small extra settle delay before presenting the Modal
+        setTimeout(() => useVoiceStore.getState().setIsOpen(true), 150);
+      }
+    });
+    return unsubscribe;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debug navigation ref — intentionally empty dep array: ref.current is mutable
   // and must NOT be used as a useEffect dependency (causes infinite snapshot loop).

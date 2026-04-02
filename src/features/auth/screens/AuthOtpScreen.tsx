@@ -79,12 +79,18 @@ export function AuthOtpScreen({ navigation, route }: Props) {
 
       await verifyOtp(phoneNumber, otpString);
 
+      // Run device trust in the background — don't block navigation on it
       if (rememberDevice && route.params?.nationalId) {
-        await trustThisDeviceForNationalId(route.params.nationalId);
+        trustThisDeviceForNationalId(route.params.nationalId).catch(console.warn);
       }
 
       const redirect = route.params?.redirect;
-      if (redirect) {
+      if (redirect?.screen === 'VOICE_RETURN') {
+        // popToTop() pops ALL modals (AuthOtp, any lingering AuthStart) back to
+        // the root MainTabs screen without remounting it — avoids the "app reload"
+        // that navigation.replace('MainTabs') causes by creating a second instance.
+        navigation.popToTop();
+      } else if (redirect) {
         navigation.replace(redirect.screen as any, redirect.params as any);
       } else {
         navigation.replace('MainTabs');
