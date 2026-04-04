@@ -91,28 +91,70 @@ export function AppointmentRescheduleConfirmScreen({ navigation, route }: Props)
         disabled={isLoading || appt.status !== 'UPCOMING'}
       />
 
-      <Modal transparent visible={showSuccessAlert} animationType="fade">
-        <Pressable style={styles.alertOverlay} onPress={() => setShowSuccessAlert(false)}>
+      <Modal transparent visible={showSuccessAlert} animationType="fade" onRequestClose={() => setShowSuccessAlert(false)}>
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 24,
+          }}
+          onPress={() => setShowSuccessAlert(false)}
+        >
           <Pressable
-            style={[styles.alertCard, isRtl ? styles.alertCardRtl : undefined]}
+            style={{
+              backgroundColor: colors.cardBackground ?? colors.surface,
+              borderRadius: 16,
+              width: '100%',
+              maxWidth: 340,
+              overflow: 'hidden',
+            }}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={[styles.alertTitle, isRtl ? styles.alertTextRtl : undefined]}>تم التغيير</Text>
-            <Text style={[styles.alertMessage, isRtl ? styles.alertTextRtl : undefined]}>
-              تم تغيير موعدك بنجاح
-            </Text>
-            <View style={[styles.alertActions, isRtl ? styles.alertActionsRtl : undefined]}>
-              <Pressable
-                style={styles.alertButton}
-                onPress={() => {
-                  setShowSuccessAlert(false);
-                  navigation.navigate('MainTabs', { screen: 'AppointmentsTab' });
+            {/* Content */}
+            <View style={{ padding: 20 }}>
+              <Text
+                style={{
+                  fontSize: 17,
+                  fontWeight: '700',
+                  color: colors.text,
+                  marginBottom: 6,
+                  textAlign: 'left',
+                  writingDirection: 'ltr',
                 }}
-                accessibilityRole="button"
               >
-                <Text style={styles.alertButtonText}>حسناً</Text>
-              </Pressable>
+                تم التغيير
+              </Text>
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.textSecondary,
+                  lineHeight: 22,
+                  textAlign: 'left',
+                  writingDirection: 'ltr',
+                }}
+              >
+                تم تغيير موعدك بنجاح
+              </Text>
             </View>
+
+            {/* Divider */}
+            <View style={{ height: 1, backgroundColor: colors.border }} />
+
+            {/* Button */}
+            <Pressable
+              style={{ paddingVertical: 14, alignItems: 'center' }}
+              onPress={() => {
+                setShowSuccessAlert(false);
+                navigation.navigate('MainTabs', { screen: 'AppointmentsTab' });
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>
+                حسناً
+              </Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -148,59 +190,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  alertCard: {
-    backgroundColor: '#3a3a3a',
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    width: '86%',
-    maxWidth: 380,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
-    gap: 10,
-  },
-  alertCardRtl: {
-    alignItems: 'flex-start',
-  },
-  alertTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#fff',
-    textAlign: 'left',
-    writingDirection: 'rtl',
-  },
-  alertMessage: {
-    fontSize: 13,
-    opacity: 0.9,
-    color: '#fff',
-    textAlign: 'left',
-    writingDirection: 'rtl',
-  },
-  alertTextRtl: {
-    textAlign: 'left',
-    writingDirection: 'rtl',
-  },
-  alertActions: {
-    marginTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-    paddingTop: 10,
-  },
-  alertActionsRtl: {
-    alignItems: 'center',
-  },
-  alertButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  alertButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
   },
 });

@@ -34,6 +34,7 @@ import { VoiceAssistantSheet } from '../features/voice/components/VoiceAssistant
 import { useVoiceStore } from '../features/voice/store/useVoiceStore';
 import { useRtl } from '../core/i18n/useRtl';
 import { spacing } from '../shared/theme/tokens';
+import { RtlAlertProvider } from '../shared/ui/RtlAlert';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -312,6 +313,7 @@ export function RootNavigator() {
             }
           }
         }, [])} />
+        <RtlAlertProvider />
       </View>
     </NavigationContainer>
   );

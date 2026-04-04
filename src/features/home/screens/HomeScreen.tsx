@@ -426,12 +426,16 @@ export function HomeScreen({ navigation }: Props) {
     'ISSUE_PASSPORT_FIRST_TIME_OVER_18',
   ];
 
+  // featuredServices is derived from ALL enabled services, ignoring any active
+  // category or search filter so the home-page popular section is never empty
+  // just because the user selected a specific category in the Services screen.
   const featuredServices = useMemo<Service[]>(() => {
-    if (!allServices.length) return [];
+    const allEnabled = rawServices.filter((s) => s.isEnabled);
+    if (!allEnabled.length) return [];
     return FEATURED_SERVICE_IDS
-      .map((id) => allServices.find((s) => s.id === id))
+      .map((id) => allEnabled.find((s) => s.id === id))
       .filter((s): s is Service => Boolean(s));
-  }, [allServices]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rawServices]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     navigation.setOptions({ title: t('home.title') });

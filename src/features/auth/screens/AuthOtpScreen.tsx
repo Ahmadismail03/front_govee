@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, View, Image, TouchableOpacity, TextInput } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput } from 'react-native';
 import { useRtl } from '../../../core/i18n/useRtl';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { trustThisDeviceForNationalId } from '../utils/trustedDevice';
+import { showRtlAlert } from '../../../shared/ui/RtlAlert';
 type Props = NativeStackScreenProps<RootStackParamList, 'AuthOtp'>;
 
 export function AuthOtpScreen({ navigation, route }: Props) {
@@ -65,7 +66,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
     try {
       const phoneNumber = route.params?.phoneNumber?.replace(/\s+/g, '').trim();
       if (!phoneNumber) {
-        Alert.alert(t('auth.errorTitle'), t('auth.invalidRequest'));
+        showRtlAlert(t('auth.errorTitle'), t('auth.invalidRequest'));
         return;
       }
 
@@ -73,7 +74,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
       // Fix: in RTL, reverse digits before joining so we send the intended OTP string.
       const otpString = (isRtl ? [...otp].reverse() : otp).join('');
       if (!otpString || otpString.trim().length !== 6 || !/^\d{6}$/.test(otpString)) {
-        Alert.alert(t('auth.errorTitle'), t('auth.otpError'));
+        showRtlAlert(t('auth.errorTitle'), t('auth.otpError'));
         return;
       }
 
@@ -101,17 +102,10 @@ export function AuthOtpScreen({ navigation, route }: Props) {
       // Show inline error — clearly visible without needing to dismiss a dialog
       setOtpError('رمز التحقق غير صحيح، حاول مرة أخرى.');
       // Also show Alert with full backend detail (contact support option)
-      Alert.alert(
+      showRtlAlert(
         t('auth.errorTitle'),
         message,
-        [
-          {
-            text: t('support.contactUs'),
-            onPress: () => navigation.navigate('ContactUs'),
-            style: 'default',
-          },
-          { text: t('common.ok'), style: 'cancel' },
-        ]
+        [{ text: t('common.ok'), style: 'cancel' }]
       );
     }
   };
