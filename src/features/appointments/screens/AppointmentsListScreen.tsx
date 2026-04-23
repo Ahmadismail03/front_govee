@@ -63,8 +63,8 @@ export function AppointmentsListScreen({ navigation }: Props) {
   return (
     <Screen>
       {/* Title + icon under the red bar; Arabic: both on physical right (icon at edge). */}
-      <View style={[styles.header, isRtl && !forceLeftLayout ? styles.headerRtl : styles.headerLtr]}>
-        {isRtl && !forceLeftLayout ? (
+      <View style={[styles.header, isRtl ? styles.headerRtl : styles.headerLtr]}>
+        {isRtl ? (
           <>
             <View style={[styles.headerTextContainer, styles.headerTextContainerRtl]}>
               <RtlPhysicalRightBlock isRtl={isRtl}>
@@ -204,7 +204,7 @@ function AppointmentRow({
         <View style={[styles.rowContent, useRtlRowLayout && styles.rowContentRtl]}>
           <View style={[styles.rowTitleLine, useRtlRowLayout && styles.rowTitleLineRtlLeft]}>
             <View style={[styles.statusBadge, { backgroundColor: statusColor }]} />
-            <Text style={[styles.rowTitle, useRtlRowLayout ? styles.rowTitleRtlLeft : textDirStyle]} numberOfLines={1}>
+            <Text style={[styles.rowTitle, useRtlRowLayout ? styles.rowTitleRtlLeft : textDirStyle]} numberOfLines={2}>
               {item.serviceName}
             </Text>
           </View>
@@ -363,7 +363,7 @@ const createStyles = (colors: ThemeColors) =>
     },
     rowTitleLine: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: spacing.xs,
       alignSelf: 'stretch',
     },
@@ -412,6 +412,7 @@ const createStyles = (colors: ThemeColors) =>
       width: 8,
       height: 8,
       borderRadius: borderRadius.full,
+      marginTop: 8,
     },
   });
 

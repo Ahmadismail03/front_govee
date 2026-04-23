@@ -70,9 +70,8 @@ export function AuthOtpScreen({ navigation, route }: Props) {
         return;
       }
 
-      // Numbers are LTR even in RTL UI; our inputs are rendered in a row-reverse container.
-      // Fix: in RTL, reverse digits before joining so we send the intended OTP string.
-      const otpString = (isRtl ? [...otp].reverse() : otp).join('');
+      // OTP boxes are forced LTR — no reversal needed.
+      const otpString = otp.join('');
       if (!otpString || otpString.trim().length !== 6 || !/^\d{6}$/.test(otpString)) {
         showRtlAlert(t('auth.errorTitle'), t('auth.otpError'));
         return;
@@ -172,6 +171,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
           alignItems: 'center',
           gap: spacing.sm,
           marginBottom: spacing.md,
+          direction: 'ltr' as const,
         },
         otpBox: {
           width: 48,
@@ -205,6 +205,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
           fontWeight: typography.bold,
           color: themeColors.text,
           textAlign: 'center',
+          writingDirection: 'ltr' as const,
           width: '100%',
           height: '100%',
         },

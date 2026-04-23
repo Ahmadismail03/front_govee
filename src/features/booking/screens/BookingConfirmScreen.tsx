@@ -194,7 +194,7 @@ export function BookingConfirmScreen({ navigation, route }: Props) {
   return (
     <Screen scroll keyboardAvoiding>
       {/* Header: icon left; «الملخص» + intro explicit left (physical), Arabic writingDirection rtl */}
-      <View style={[styles.header, isRtl ? styles.headerRtlPhysical : styles.headerLtrPhysical]}>
+      <View style={[styles.header, isRtl ? styles.headerLtrPhysical : styles.headerLtrPhysical]}>
         <View style={[styles.headerIcon, { backgroundColor: theme.primaryLight }]}>
           <Ionicons name="clipboard-outline" size={iconSizes.xl} color={theme.primary} />
         </View>

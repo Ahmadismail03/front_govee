@@ -46,7 +46,7 @@ export function RtlStackHeaderRight() {
         accessibilityRole="button"
         accessibilityLabel="back"
       >
-        <Ionicons name="chevron-forward" size={28} color={colors.headerText} />
+        <Ionicons name="chevron-back" size={28} color={colors.headerText} />
       </Pressable>
       {displayTitle ? (
         <Text style={[styles.title, { color: colors.headerText }]} numberOfLines={1}>
@@ -59,7 +59,7 @@ export function RtlStackHeaderRight() {
 
 const styles = StyleSheet.create({
   cluster: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: 0,

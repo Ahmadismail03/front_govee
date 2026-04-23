@@ -282,12 +282,7 @@ function ServiceCard({
         <View style={serviceCardStyles.content}>
           {/* Title row: chevron first (anchors to far right in RTL) then name */}
           <View style={serviceCardStyles.titleRow}>
-            <Ionicons
-              name="chevron-back"
-              size={20}
-              color={colors.primary}
-              style={serviceCardStyles.arrow}
-            />
+          
             <Text
               style={[serviceCardStyles.title, { color: colors.text }]}
               numberOfLines={2}
@@ -346,6 +341,7 @@ const serviceCardStyles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'flex-start',
     gap: spacing.sm,
+    marginStart: 7,
   },
   title: {
     flexShrink: 1,

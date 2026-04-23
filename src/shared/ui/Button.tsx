@@ -99,6 +99,8 @@ export function Button({
         />
       ) : (
         <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
           style={[
             styles.buttonText,
             isPrimary && styles.primaryButtonText,

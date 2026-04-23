@@ -15,7 +15,7 @@ const { data } = await client.post<VoiceProcessResponse>('/decision/next', {
   text,
   sessionId,
 });
-console.log("VOICE API IN", data);
+console.log("VOICE API IN", data.message,data.stage);
 return data;
 
   } catch (e: any) {

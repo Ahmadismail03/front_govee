@@ -39,7 +39,12 @@ export type VoiceProcessResponse = {
   stage: VoiceStage;
   message: string;
   action?: Exclude<VoiceAction, undefined>;
+  /** Base64-encoded MP3 audio rendered by the TTS pipeline on the backend */
+  audioBase64?: string;
+  /** Whether the audio should play through speaker or earpiece */
+  voiceOutputMode?: 'speaker' | 'earpiece';
 };
+
 
 /**
  * Message shown in the chat UI

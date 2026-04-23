@@ -252,7 +252,7 @@ const currency = 'ILS';
         <View style={styles.titleRow}>
           <Pressable onPress={onPress} style={styles.detailsButton}>
             <Ionicons
-              name={isRtl ? 'chevron-back' : 'chevron-forward'}
+              name={isRtl ? 'chevron-forward' : 'chevron-forward'}
               size={20}
               color={colors.primary}
             />

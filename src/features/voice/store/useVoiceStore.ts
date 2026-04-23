@@ -21,6 +21,9 @@ type VoiceState = {
   messages: VoiceMessage[];
   recordingState: VoiceRecordingState;
   error: string | null;
+  /** Live partial transcript shown while the user is speaking */
+  liveTranscript: string;
+  setLiveTranscript: (t: string) => void;
   setSessionId: (sessionId: string | null) => void;
   setVoiceMode: (mode: 'speaker' | 'earpiece') => void;
 
@@ -85,6 +88,8 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   messages: [],
   recordingState: 'idle',
   error: null,
+  liveTranscript: '',
+  setLiveTranscript: (t) => set({ liveTranscript: t }),
 
   shouldResumeListening: false,
   setShouldResumeListening: (v) =>
@@ -113,6 +118,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       messages: [],
       recordingState: 'idle',
       error: null,
+      liveTranscript: '',
       authTriggeredByVoice: false,
       pendingAuthData: null,
       pendingReopenAfterAuth: false,

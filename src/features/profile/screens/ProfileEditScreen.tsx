@@ -225,7 +225,7 @@ export function ProfileEditScreen({ navigation }: Props) {
           <Text style={[styles.sectionTitle, textDirStyle]}>{t('profile.personalInfo')}</Text>
         </RtlPhysicalRightBlock>
 
-        <RtlPhysicalRightBlock isRtl={isRtl}>
+        <RtlPhysicalRightBlock isRtl={false}>
           <TextField
             label={t('profile.fullName')}
             value={fullName}

@@ -1,7 +1,4 @@
-import * as FileSystem from "expo-file-system/legacy";
 import { getApiClient } from "../../core/api/axiosClient";
-
-const API_URL = `${process.env.EXPO_PUBLIC_API_BASE_URL}/voice/stt`;
 
 export type VoiceDecisionResponse = {
   ok: boolean;
@@ -11,33 +8,6 @@ export type VoiceDecisionResponse = {
   audioBase64?: string;
   voiceOutputMode?: string;
 };
-
-export async function sendVoice(
-  uri: string,
-  sessionId: string
-): Promise<VoiceDecisionResponse> {
-
-  const url =
-    sessionId && sessionId.trim()
-      ? `${API_URL}?sessionId=${encodeURIComponent(sessionId)}`
-      : API_URL;
-
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-
-  const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "audio/wav",
-    },
-    body: binary,
-  });
-
-  return await response.json();
-}
 
 /**
  * Update voice output mode (speaker/earpiece) on backend

@@ -269,13 +269,13 @@ const createStyles = (colors: ThemeColors) =>
       fontWeight: typography.semibold,
       color: colors.textSecondary,
       minWidth: 80,
-      textAlign: 'right',
+      textAlign: 'left',
     },
     value: {
       flex: 1,
       fontSize: typography.base,
       color: colors.text,
-      textAlign: 'right',
+      textAlign: 'left',
     },
     actionsRow: {
       flexDirection: 'row',

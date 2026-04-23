@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  TextInput,
   Animated,
   Easing,
 } from 'react-native';
@@ -16,14 +15,21 @@ import { useThemeColors } from '../../../shared/theme/useTheme';
 import { useVoiceStore } from '../store/useVoiceStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { PermissionsAndroid, Platform } from "react-native";
-import { startRecording, stopRecording } from '../useVoiceRecorder';
-import { sendVoice, completeVoiceSession, createVoiceSession } from '../voiceApi';
+import { Platform } from "react-native";
+import { useStreamingRecorder } from '../useStreamingRecorder';
+import { completeVoiceSession, createVoiceSession } from '../voiceApi';
 import * as FileSystem from "expo-file-system/legacy";
 import { Audio } from "expo-av";
 import React from 'react';
 import { useRtl } from '../../../core/i18n/useRtl';
 import { RtlPhysicalRightBlock } from '../../../shared/ui/RtlPhysicalRightBlock';
+
+// WebSocket base URL — set EXPO_PUBLIC_WS_BASE_URL in your .env
+// e.g. ws://192.168.1.x:3000  or  ws://your-tunnel.ngrok.io
+const WS_BASE_URL =
+  process.env.EXPO_PUBLIC_WS_BASE_URL ??
+  process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/^http/, 'ws').replace(/\/api$/, '') ??
+  'ws://localhost:3000';
 
 type Props = {
   onNavigate?: (screen: string, params?: any) => void;
@@ -180,8 +186,11 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const setAuthTriggeredByVoice = useVoiceStore((s) => s.setAuthTriggeredByVoice);
   const setPendingReopenAfterAuth = useVoiceStore((s) => s.setPendingReopenAfterAuth);
   const setRecordingState = useVoiceStore((s) => s.setRecordingState);
-  const clear = useVoiceStore((s) => s.clear);
   const error = useVoiceStore((s) => s.error);
+
+  // Stable ref so handleFinalTranscript can call stopStreaming() even though
+  // stopStreaming is declared later (returned from useStreamingRecorder).
+  const stopStreamingRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (!isOpen) {
@@ -242,101 +251,135 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   const shouldResumeListening = useVoiceStore((s) => s.shouldResumeListening);
 
-  const processAudio = async (uri: string) => {
+  // ── Streaming recorder ────────────────────────────────────────────────────
+  const handleFinalTranscript = useCallback(async (transcript: string) => {
+    // NOTE: The streaming hook has already called _hardStop() before invoking
+    // this callback. isStreamingRef.current is false by the time we run.
+    const voiceState = useVoiceStore.getState();
+    const currentSessionId = voiceState.sessionId;
+    const currentVoiceMode = voiceState.voiceMode;
+
+    if (!currentSessionId) {
+      console.warn('🎤 No sessionId — ignoring transcript');
+      setRecordingState('idle');
+      return;
+    }
+
+    console.log(`🎙️ Final transcript: "${transcript}"`);
+    setRecordingState('processing');
+    useVoiceStore.getState().setLiveTranscript('');
+
+    // Pre-switch audio session to playback mode
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: currentVoiceMode === 'earpiece',
+    }).catch((e) => console.warn('⚠️ Pre-warm audio mode failed:', e));
+
     try {
-      const voiceState = useVoiceStore.getState();
-      const currentSessionId = voiceState.sessionId;
-      const currentVoiceMode = voiceState.voiceMode;
-
-      if (!currentSessionId) {
-        console.warn("🎤 No sessionId, cannot send voice");
-        setRecordingState("idle");
-        return;
-      }
-
-      Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: currentVoiceMode === 'earpiece',
-      }).catch((e) => console.warn('⚠️ Pre-warm audio mode failed:', e));
-
-      const decision = await sendVoice(uri, currentSessionId);
+      const decision = await useVoiceStore.getState().processMessage(transcript);
 
       if (decision.sessionId) {
         useVoiceStore.getState().setSessionId(decision.sessionId);
       }
 
-      console.log("🗣 Assistant:", decision.message, "Stage:", decision.stage);
+      console.log('🗣 Assistant:', decision.message, 'Stage:', decision.stage);
 
       if (decision.stage === 'IDENTITY' && authStatus !== 'authenticated') {
-        console.log("🔐 Identity stage detected — closing sheet and navigating to AuthStart");
-        // Stop recording if still active
-        try { await stopRecording(); } catch { /* ignore */ }
-
-        // NOTE: We intentionally do NOT store decision.audioBase64 here.
-        // That audio is the identity-prompt ("tell me your ID") which is stale
-        // once auth completes. The correct post-auth audio arrives from
-        // /decision/auth/sync inside verifyOtp and is stored there instead.
-
-        // Mark that the sheet should reopen once auth completes
+        console.log('🔐 Identity stage — navigating to AuthStart');
+        // stopStreaming already called by hook — no manual call needed
         setPendingReopenAfterAuth(true);
         setAuthTriggeredByVoice(true);
-        setRecordingState("idle");
-        // Close the sheet before navigating so it doesn't sit behind the auth screens
+        setRecordingState('idle');
         setIsOpen(false);
-        // Navigate to the proper auth screen and instruct OTP to return here
         onNavigate?.('AuthStart', { redirect: { screen: 'VOICE_RETURN' } });
         return;
       }
 
       if (decision.audioBase64) {
-        setRecordingState("playing");
-        console.log("🎤 Processing audio response...");
+        setRecordingState('playing');
         try {
           await playTts(decision.audioBase64, currentVoiceMode);
-          console.log("🎤 Audio playback completed, setting to idle");
-          setRecordingState("idle");
+          setRecordingState('idle');
         } catch (err) {
-          console.error("❌ playTts error:", err);
-          setRecordingState("error");
+          console.error('❌ playTts error:', err);
+          setRecordingState('error');
         }
-        useVoiceStore.getState().setShouldResumeListening(true);
+        // Small delay: give the WS onclose handler time to clear isStoppingRef
+        // before startStreaming() is called in the shouldResumeListening effect.
+        setTimeout(() => {
+          useVoiceStore.getState().setShouldResumeListening(true);
+        }, 150);
       } else {
-        setRecordingState("idle");
+        setRecordingState('idle');
       }
     } catch (err) {
-      console.error("❌ Error processing audio:", err);
-      setRecordingState("error");
+      console.error('❌ Error processing transcript:', err);
+      setRecordingState('error');
     }
-  };
+  }, [authStatus, onNavigate]);
 
-  const handleSilenceDetected = useCallback(async (uri: string) => {
-    try {
-      setRecordingState("processing");
-      await processAudio(uri);
-    } catch (err) {
-      console.error("❌ Error processing audio after silence:", err);
-      setRecordingState("error");
+  const handlePartialTranscript = useCallback((transcript: string) => {
+    useVoiceStore.getState().setLiveTranscript(transcript);
+  }, []);
+
+  const handleStreamError = useCallback((message: string) => {
+    console.error('❌ Streaming error:', message);
+    setRecordingState('error');
+    useVoiceStore.getState().setLiveTranscript('');
+  }, []);
+
+  const handleStreamReady = useCallback(() => {
+    setRecordingState('listening');
+  }, []);
+
+  const sessionId = useVoiceStore((s) => s.sessionId);
+
+  const { startStreaming, stopStreaming, partialTranscript, isStreaming } = useStreamingRecorder({
+    sessionId,
+    wsBaseUrl: WS_BASE_URL,
+    onFinalTranscript: handleFinalTranscript,
+    onPartialTranscript: handlePartialTranscript,
+    onError: handleStreamError,
+    onReady: handleStreamReady,
+  });
+
+  // Keep the ref in sync so handleFinalTranscript always calls the latest stopStreaming
+  useEffect(() => {
+    stopStreamingRef.current = stopStreaming;
+  }, [stopStreaming]);
+
+  // Live transcript from the hook drives the store (for display)
+  useEffect(() => {
+    useVoiceStore.getState().setLiveTranscript(partialTranscript);
+  }, [partialTranscript]);
+
+  // Safety net: if the WebSocket closes for any reason while the UI is still
+  // showing 'listening', reset to idle. This covers edge cases where the
+  // stream ends without a final transcript reaching handleFinalTranscript.
+  useEffect(() => {
+    if (!isStreaming && recordingState === 'listening') {
+      console.log('🔒 Safety net: stream stopped but UI stuck at listening — resetting to idle');
+      setRecordingState('idle');
+      useVoiceStore.getState().setLiveTranscript('');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authStatus]);
+  }, [isStreaming, recordingState]);
 
+  // Auto-resume mic after TTS finishes
   useEffect(() => {
     if (shouldResumeListening && isOpen) {
       (async () => {
-        console.log("🎤 Auto resuming mic after TTS - starting recording");
-        await startRecording(handleSilenceDetected);
-        console.log("🎤 Recording started successfully, setting state to listening");
-        useVoiceStore.getState().setRecordingState("listening");
+        console.log('🎤 Auto-resuming mic after TTS');
         useVoiceStore.getState().setShouldResumeListening(false);
+        await startStreaming();
       })().catch((err) => {
-        console.error("🎤 Error in auto-resume mic:", err);
-        useVoiceStore.getState().setRecordingState("error");
+        console.error('🎤 Error in auto-resume mic:', err);
+        useVoiceStore.getState().setRecordingState('error');
       });
     }
-  }, [shouldResumeListening, isOpen, handleSilenceDetected]);
+  }, [shouldResumeListening, isOpen, startStreaming]);
 
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [hasStartedSession, setHasStartedSession] = useState(false);
@@ -504,53 +547,77 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     outputRange: ['0deg', '360deg'],
   });
 
-  const handleClose = async () => {
-    if (recordingState === "listening") {
-      try { await stopRecording(); }
-      catch (err) { console.warn("⚠️ stopRecording on close failed (ignored):", err); }
+  const handleClose = useCallback(async () => {
+    console.log('🛑 [handleClose] Hard-stopping entire voice session');
+
+    // ── 1. Stop any active TTS audio playback ─────────────────────────────────
+    if (currentSound) {
+      try {
+        await currentSound.stopAsync();
+        await currentSound.unloadAsync();
+      } catch { /* already stopped / unloaded */ }
+      currentSound = null;
     }
 
+    // ── 2. Force-stop the microphone (belt-and-suspenders on top of stopStreaming) ─
+    try {
+      const LiveAudioStream = require('react-native-live-audio-stream').default;
+      LiveAudioStream.stop();
+    } catch { /* mic was already idle */ }
+
+    // ── 3. Close the STT WebSocket stream ────────────────────────────────────
+    try { stopStreamingRef.current(); } catch { /* nothing was streaming */ }
+
+    // ── 4. Cancel any pending auto-resume so the mic doesn't restart ─────────
+    try { useVoiceStore.getState().setShouldResumeListening(false); } catch { /* ignore */ }
+
+    // ── 5. Clear pending deferred audio ──────────────────────────────────────
+    try { useVoiceStore.getState().setPendingAudio(null); } catch { /* ignore */ }
+
+    // ── 6. Complete the session on the backend (best-effort, non-blocking) ───
     try {
       const sid = useVoiceStore.getState().sessionId;
       if (sid) {
         await completeVoiceSession(sid);
-        console.log("✅ Voice session completed on close");
+        console.log('✅ Voice session completed on close');
       }
     } catch (err) {
-      console.warn("⚠️ completeVoiceSession on close failed:", err);
+      console.warn('⚠️ completeVoiceSession on close failed (non-fatal):', err);
     }
 
-    useVoiceStore.getState().setSessionId(null);
-    setRecordingState("idle");
+    // ── 7. Release audio session back to default ──────────────────────────────
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: false,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: false,
+      });
+    } catch { /* ignore */ }
+
+    // ── 8. Reset all voice state ──────────────────────────────────────────────
+    try { useVoiceStore.getState().setLiveTranscript(''); } catch { /* ignore */ }
+    try { useVoiceStore.getState().setSessionId(null); } catch { /* ignore */ }
+    setRecordingState('idle');
     setIsSessionReady(false);
     setHasStartedSession(false);
     setIsOpen(false);
-  };
 
-  async function requestMicPermission() {
-    if (Platform.OS !== "android") return true;
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-      {
-        title: "Microphone Permission",
-        message: "This app needs access to your microphone",
-        buttonPositive: "OK",
-      }
-    );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
-  }
+    console.log('✅ [handleClose] Voice session fully terminated');
+  }, [stopStreamingRef, setRecordingState, setIsOpen]);
 
   const onMic = async () => {
     if (!isSessionReady || hasStartedSession) return;
     try {
-      if (recordingState === "idle") {
+      if (recordingState === 'idle') {
         setHasStartedSession(true);
-        await startRecording(handleSilenceDetected);
-        setRecordingState("listening");
+        // startStreaming connects WS → server sends 'ready' → mic starts
+        await startStreaming();
+        // recordingState transitions to 'listening' inside handleStreamReady
       }
     } catch (err) {
-      console.error("❌ Voice error", err);
-      setRecordingState("error");
+      console.error('❌ Voice error', err);
+      setRecordingState('error');
     }
   };
 
@@ -589,8 +656,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   );
   const insets = useSafeAreaInsets();
   /** Modal + translucent status bar: pad the header so content clears the notch / status bar. */
-  const headerPaddingTop =
-    Platform.OS === 'ios' ? insets.top + spacing.md : spacing.md;
+  const headerPaddingTop = spacing.xl + spacing.md;
 
   return (
     <Modal visible={isOpen} animationType="slide" onRequestClose={() => setIsOpen(false)}>
@@ -620,12 +686,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
         {/* ── Body ── */}
         <View style={styles.body}>
-          {lastAssistantMessage ? (
-            <Animated.View style={[styles.responseCard, { opacity: responseCardOpacity }]}>
-              <Text style={styles.responseLabel}>{t('voice.assistantLabel')}</Text>
-              <Text style={styles.responseText}>{lastAssistantMessage}</Text>
-            </Animated.View>
-          ) : (
+          {!lastAssistantMessage && (
             <View style={styles.empty}>
               <RtlPhysicalRightBlock isRtl={isRtl}>
                 <Text style={[styles.emptySub, textDirStyle]}>{t('voice.examplePrompts')}</Text>
@@ -693,6 +754,8 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
               )}
             </TouchableOpacity>
           </View>
+
+          {/* Live partial transcript removed — no longer shown */}
 
           {/* Status label shown only once the session is active */}
           {(hasStartedSession || recordingState !== 'idle' || !!error) && (
