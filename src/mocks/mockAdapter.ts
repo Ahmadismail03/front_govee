@@ -30,7 +30,7 @@ function json<T>(
 function getPath(url?: string): string {
   if (!url) return '/';
   try {
-    const u = new URL(url, 'https://mock.smartgov.local');
+    const u = new URL(url, 'https://mock.SpeakGov.local');
     return u.pathname;
   } catch {
     return url;

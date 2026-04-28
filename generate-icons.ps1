@@ -1,4 +1,4 @@
-# Icon Generator Script for SmartGov App
+# Icon Generator Script for SpeakGov App
 # This script creates proper app icons from logo.png
 # Requires ImageMagick to be installed
 
@@ -13,7 +13,7 @@ if (-not (Get-Command magick -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-Write-Host "SmartGov Icon Generator" -ForegroundColor Cyan
+Write-Host "SpeakGov Icon Generator" -ForegroundColor Cyan
 Write-Host "======================" -ForegroundColor Cyan
 Write-Host ""
 

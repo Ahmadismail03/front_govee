@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "SmartGov",
+    "name": "SpeakGov",
     "slug": "smart-gov-app",
-    "scheme": "smartgov",
+    "scheme": "SpeakGov",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,12 +14,12 @@
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
-      "bundleIdentifier": "com.smartgov.app",
+      "bundleIdentifier": "com.SpeakGov.app",
       "supportsTablet": true,
       "buildNumber": "1.0.0"
     },
     "android": {
-      "package": "com.smartgov.app",
+      "package": "com.SpeakGov.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-foreground.png",
         "backgroundColor": "#FFFFFF"

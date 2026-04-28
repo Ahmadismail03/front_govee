@@ -19,7 +19,7 @@ export const ar = {
     female: 'أنثى',
   },
   app: {
-    name: 'SmartGov',
+    name: 'SpeakGov',
   },
   tabs: {
     home: 'الرئيسية',
@@ -49,19 +49,19 @@ export const ar = {
       title: 'تواصل معنا',
       cardTitle: 'تواصل مع الفريق',
       cardDesc: 'للاستفسارات العامة (تجريبي). اضغط للفتح واضغط مطولًا للنسخ.',
-      email: 'contact@smartgov.gov',
+      email: 'contact@SpeakGov.gov',
       phone: '+1 000 000 0000',
       heroTitle: 'نحن هنا لمساعدتك',
-      heroSubtitle: 'تواصل مع فريق SmartGov للاستفسار عن الخدمات أو المواعيد أو أي مساعدة تحتاجها.',
+      heroSubtitle: 'تواصل مع فريق SpeakGov للاستفسار عن الخدمات أو المواعيد أو أي مساعدة تحتاجها.',
       footerCopyright: '© الحكومة – جميع الحقوق محفوظة',
     },
     technical: {
       title: 'الدعم الفني',
       cardTitle: 'تحتاج مساعدة؟',
       cardDesc: 'اشرح المشكلة وسنساعدك (تجريبي). اضغط للفتح واضغط مطولًا للنسخ.',
-      email: 'support@smartgov.gov',
+      email: 'support@SpeakGov.gov',
       phone: '+1 000 000 0001',
-      heroTitle: 'دعم فني لتطبيق SmartGov',
+      heroTitle: 'دعم فني لتطبيق SpeakGov',
       heroSubtitle: 'أبلغ عن الأخطاء أو المشاكل التقنية في التطبيق حتى نتمكن من إصلاحها بسرعة.',
       footerCopyright: '© الحكومة – جميع الحقوق محفوظة',
     },
@@ -69,7 +69,7 @@ export const ar = {
       title: 'الإبلاغ عن مشكلة',
       cardTitle: 'الإبلاغ عن عطل',
       cardDesc: 'أرسل خطوات إعادة المشكلة ولقطات شاشة (تجريبي). اضغط للفتح واضغط مطولًا للنسخ.',
-      email: 'bugs@smartgov.gov',
+      email: 'bugs@SpeakGov.gov',
       phone: '+1 000 000 0002',
       heroTitle: 'أبلغ عن مشكلة أو خلل',
       heroSubtitle: 'أخبرنا بما حدث في طلبك أو موعدك حتى نراجع المشكلة ونتابع معك.',
@@ -342,7 +342,7 @@ export const ar = {
     },
     notifications: {
       ntf_1: {
-        title: 'مرحبًا بك في SmartGov',
+        title: 'مرحبًا بك في SpeakGov',
         body: 'استكشف الخدمات واحجز موعدك خلال دقائق.',
       },
       ntf_2: {

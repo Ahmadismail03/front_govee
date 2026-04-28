@@ -19,7 +19,7 @@ export const en = {
     emptyTitle: 'Nothing here yet',
   },
   app: {
-    name: 'SmartGov',
+    name: 'SpeakGov',
   },
   tabs: {
     home: 'Home',
@@ -49,27 +49,27 @@ export const en = {
       title: 'Contact Us',
       cardTitle: 'Get in touch',
       cardDesc: 'Reach our team for general inquiries (mock). Tap to open, long-press to copy.',
-      email: 'contact@smartgov.gov',
+      email: 'contact@SpeakGov.gov',
       phone: '+1 000 000 0000',
       heroTitle: 'We are here to help',
-      heroSubtitle: 'Get in touch with the SmartGov team for questions about services, appointments, or technical issues.',
+      heroSubtitle: 'Get in touch with the SpeakGov team for questions about services, appointments, or technical issues.',
       footerCopyright: '© Government – All rights reserved',
     },
     technical: {
       title: 'Technical Support',
       cardTitle: 'Need help?',
       cardDesc: 'Describe your issue and we will assist you (mock). Tap to open, long-press to copy.',
-      email: 'support@smartgov.gov',
+      email: 'support@SpeakGov.gov',
       phone: '+1 000 000 0001',
       heroTitle: 'Technical support for the app',
-      heroSubtitle: 'Report errors, bugs, or issues with the SmartGov application so we can fix them quickly.',
+      heroSubtitle: 'Report errors, bugs, or issues with the SpeakGov application so we can fix them quickly.',
       footerCopyright: '© Government – All rights reserved',
     },
     report: {
       title: 'Report a Problem',
       cardTitle: 'Report an issue',
       cardDesc: 'Send steps to reproduce and screenshots (mock). Tap to open, long-press to copy.',
-      email: 'bugs@smartgov.gov',
+      email: 'bugs@SpeakGov.gov',
       phone: '+1 000 000 0002',
       heroTitle: 'Report a problem or issue',
       heroSubtitle: 'Tell us what went wrong with your request or appointment so we can investigate and follow up.',
@@ -342,7 +342,7 @@ export const en = {
     },
     notifications: {
       ntf_1: {
-        title: 'Welcome to SmartGov',
+        title: 'Welcome to SpeakGov',
         body: 'Explore services and book your appointment in minutes.',
       },
       ntf_2: {

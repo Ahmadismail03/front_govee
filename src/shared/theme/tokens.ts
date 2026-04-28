@@ -1,6 +1,6 @@
 /**
  * Design tokens for consistent UI/UX across the app.
- * Brand colors derived from official SmartGov shield logo.
+ * Brand colors derived from official SpeakGov shield logo.
  * Supports both LTR and RTL layouts.
  */
 

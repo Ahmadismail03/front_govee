@@ -118,7 +118,7 @@ export function getMockApiClient(): AxiosInstance {
   if (mockClient) return mockClient;
 
   mockClient = axios.create({
-    baseURL: 'https://mock.smartgov.local',
+    baseURL: 'https://mock.SpeakGov.local',
     timeout: 15000,
     adapter: mockAdapter,
   });
