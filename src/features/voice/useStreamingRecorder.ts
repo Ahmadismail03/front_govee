@@ -48,6 +48,9 @@ interface UseStreamingRecorderOptions {
   onFinalTranscript: (transcript: string) => void;
   onPartialTranscript?: (transcript: string) => void;
   onError?: (message: string) => void;
+  /** Fired when STT ends with no usable speech (VAD timeout). Separate from
+   *  onError so the caller can auto-retry without treating it as a hard failure. */
+  onNoSpeech?: () => void;
   onReady?: () => void;
 }
 
@@ -55,6 +58,10 @@ interface UseStreamingRecorderResult {
   startStreaming: () => Promise<void>;
   stopStreaming: () => void;
   isStreaming: boolean;
+  /** True while the previous WebSocket connection is still tearing down.
+   *  startStreaming() is blocked until this is false. Use it to keep the
+   *  mic button disabled during the teardown window without guessing timings. */
+  isStopping: boolean;
   partialTranscript: string;
 }
 
@@ -66,6 +73,7 @@ export function useStreamingRecorder({
   onFinalTranscript,
   onPartialTranscript,
   onError,
+  onNoSpeech,
   onReady,
 }: UseStreamingRecorderOptions): UseStreamingRecorderResult {
 
@@ -76,7 +84,8 @@ export function useStreamingRecorder({
   const connectionIdRef  = useRef(0);     // incremented on every new connection
 
   // ── React state (for UI re-renders only) ──────────────────────────────────
-  const [isStreaming,     setIsStreaming]     = useState(false);
+  const [isStreaming,       setIsStreaming]       = useState(false);
+  const [isStopping,        setIsStopping]        = useState(false);
   const [partialTranscript, setPartialTranscript] = useState("");
 
   // ── Mic permission ─────────────────────────────────────────────────────────
@@ -102,6 +111,7 @@ export function useStreamingRecorder({
     // Update guards FIRST so no re-entrant start can slip through
     isStreamingRef.current = false;
     isStoppingRef.current  = true;  // will be cleared in onclose
+    setIsStopping(true);
 
     setIsStreaming(false);
     setPartialTranscript("");
@@ -119,6 +129,15 @@ export function useStreamingRecorder({
       } catch { /* ignore */ }
     } else if (ws && ws.readyState === WebSocket.CONNECTING) {
       try { ws.close(); } catch { /* ignore */ }
+    } else {
+      // ws is null, already CLOSED, or detached — onclose will NOT fire for this
+      // _hardStop call, so release isStoppingRef immediately to unblock the next
+      // startStreaming(). (CLOSING state: onclose WILL still fire, so skip it.)
+      if (!ws || ws.readyState === WebSocket.CLOSED) {
+        isStoppingRef.current = false;
+        setIsStopping(false);
+        console.log(`🔓 isStoppingRef cleared immediately (no WS to wait for, reason="${reason}")`);
+      }
     }
   }
 
@@ -262,7 +281,7 @@ export function useStreamingRecorder({
                     if (myConnectionId !== connectionIdRef.current) return; // stale
                     console.warn(`⏱️ END_AUDIO timeout — no FINAL received (conn #${myConnectionId}), resetting`);
                     _hardStop("end_audio timeout — no final");
-                    onError?.("لم أسمعك بوضوح، تكلم مرة ثانية");
+                    onNoSpeech?.();
                   }, 5000) as unknown as number;
 
                   return; // don't send this chunk
@@ -347,11 +366,12 @@ export function useStreamingRecorder({
       // Always release the stopping lock so next startStreaming() can proceed
       if (isCurrent || isStoppingRef.current) {
         isStoppingRef.current = false;
+        setIsStopping(false);
         console.log(`🔓 isStoppingRef cleared (conn #${myConnectionId})`);
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, wsBaseUrl, onFinalTranscript, onPartialTranscript, onError, onReady]);
+  }, [sessionId, wsBaseUrl, onFinalTranscript, onPartialTranscript, onError, onNoSpeech, onReady]);
 
-  return { startStreaming, stopStreaming, isStreaming, partialTranscript };
+  return { startStreaming, stopStreaming, isStreaming, isStopping, partialTranscript };
 }

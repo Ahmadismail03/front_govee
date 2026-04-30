@@ -97,8 +97,8 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
 
   return new Promise<void>((resolve) => {
     let done = false;
-    let safetyTimer: NodeJS.Timeout | null = null;
-    let pollInterval: NodeJS.Timeout | null = null;
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
     let playbackStarted = false;
 
     const finish = (reason: string) => {
@@ -195,6 +195,11 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   useEffect(() => {
     if (!isOpen) {
       setIsSessionReady(false);
+      if (noSpeechTimerRef.current) {
+        clearTimeout(noSpeechTimerRef.current);
+        noSpeechTimerRef.current = null;
+      }
+      setNoSpeechToast(false);
       return;
     }
 
@@ -305,6 +310,8 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
           setRecordingState('idle');
         } catch (err) {
           console.error('❌ playTts error:', err);
+          // Reset hasStartedSession so the user can tap the mic button to retry.
+          setHasStartedSession(false);
           setRecordingState('error');
         }
         // Small delay: give the WS onclose handler time to clear isStoppingRef
@@ -317,6 +324,8 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       }
     } catch (err) {
       console.error('❌ Error processing transcript:', err);
+      // Reset hasStartedSession so the user can tap the mic button to retry.
+      setHasStartedSession(false);
       setRecordingState('error');
     }
   }, [authStatus, onNavigate]);
@@ -327,9 +336,34 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   const handleStreamError = useCallback((message: string) => {
     console.error('❌ Streaming error:', message);
-    setRecordingState('error');
+    // Clear in-progress transcript and prevent a stale auto-resume from looping.
     useVoiceStore.getState().setLiveTranscript('');
-  }, []);
+    useVoiceStore.getState().setShouldResumeListening(false);
+    // Show error and ungate the mic button immediately.
+    // isMicDisabled now uses isStopping (from the hook) to block premature retries
+    // while the WebSocket is still closing — no timing assumption needed.
+    setHasStartedSession(false);
+    setRecordingState('error');
+  }, [setRecordingState]);
+
+  // Handles the "no speech" case: shows a 2-second transient toast then
+  // auto-restarts listening without requiring the user to tap.
+  const handleNoSpeech = useCallback(() => {
+    console.log('👂 No speech detected — showing toast, auto-retry in 2 s');
+    useVoiceStore.getState().setLiveTranscript('');
+    useVoiceStore.getState().setShouldResumeListening(false);
+    // hasStartedSession stays true — recordingState='idle' + hasStartedSession=true
+    // already makes isMicDisabled=true, so the user can't tap during the wait.
+    setRecordingState('idle');
+    setNoSpeechToast(true);
+    if (noSpeechTimerRef.current) clearTimeout(noSpeechTimerRef.current);
+    noSpeechTimerRef.current = setTimeout(() => {
+      noSpeechTimerRef.current = null;
+      setNoSpeechToast(false);
+      // Piggyback on the existing shouldResumeListening effect to restart the mic.
+      useVoiceStore.getState().setShouldResumeListening(true);
+    }, 2000);
+  }, [setRecordingState]);
 
   const handleStreamReady = useCallback(() => {
     setRecordingState('listening');
@@ -337,12 +371,13 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   const sessionId = useVoiceStore((s) => s.sessionId);
 
-  const { startStreaming, stopStreaming, partialTranscript, isStreaming } = useStreamingRecorder({
+  const { startStreaming, stopStreaming, partialTranscript, isStreaming, isStopping } = useStreamingRecorder({
     sessionId,
     wsBaseUrl: WS_BASE_URL,
     onFinalTranscript: handleFinalTranscript,
     onPartialTranscript: handlePartialTranscript,
     onError: handleStreamError,
+    onNoSpeech: handleNoSpeech,
     onReady: handleStreamReady,
   });
 
@@ -383,6 +418,8 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [hasStartedSession, setHasStartedSession] = useState(false);
+  const [noSpeechToast, setNoSpeechToast] = useState(false);
+  const noSpeechTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   React.useEffect(() => {
@@ -598,6 +635,11 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     // ── 8. Reset all voice state ──────────────────────────────────────────────
     try { useVoiceStore.getState().setLiveTranscript(''); } catch { /* ignore */ }
     try { useVoiceStore.getState().setSessionId(null); } catch { /* ignore */ }
+    if (noSpeechTimerRef.current) {
+      clearTimeout(noSpeechTimerRef.current);
+      noSpeechTimerRef.current = null;
+    }
+    setNoSpeechToast(false);
     setRecordingState('idle');
     setIsSessionReady(false);
     setHasStartedSession(false);
@@ -607,16 +649,22 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   }, [stopStreamingRef, setRecordingState, setIsOpen]);
 
   const onMic = async () => {
-    if (!isSessionReady || hasStartedSession) return;
+    if (!isSessionReady) return;
+    // Allow re-tap only when idle (first start) OR when in error state (retry).
+    // Any other active state (listening / processing / playing) is already in
+    // progress — ignore the tap.
+    if (hasStartedSession && recordingState !== 'error') return;
     try {
-      if (recordingState === 'idle') {
+      if (recordingState === 'idle' || recordingState === 'error') {
         setHasStartedSession(true);
+        setRecordingState('idle'); // clear error UI before the new attempt
         // startStreaming connects WS → server sends 'ready' → mic starts
         await startStreaming();
         // recordingState transitions to 'listening' inside handleStreamReady
       }
     } catch (err) {
       console.error('❌ Voice error', err);
+      setHasStartedSession(false); // release the lock so the user can retry again
       setRecordingState('error');
     }
   };
@@ -646,7 +694,16 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
-  const isMicDisabled = !isSessionReady || hasStartedSession;
+  // Disable the mic button when:
+  //  • the session isn't ready yet (session ID not created)
+  //  • a turn is actively in progress (listening / processing / playing)
+  //  • the previous WebSocket is still closing (isStopping from hook)
+  //    — startStreaming() guards on isStoppingRef so tapping while it's true
+  //      silently no-ops; keep the button disabled until teardown is confirmed.
+  const isMicDisabled =
+    !isSessionReady ||
+    (hasStartedSession && recordingState !== 'error') ||
+    isStopping;
   const textDirStyle = useMemo(
     () =>
       isRtl
@@ -757,8 +814,15 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
           {/* Live partial transcript removed — no longer shown */}
 
+          {/* Transient no-speech toast — auto-dismisses after 2 s */}
+          {noSpeechToast && (
+            <Text style={[styles.stateSubtitle, { color: '#da0e0e' }]}>
+              {'لم أسمعك بوضوح، تكلم مرة أخرى'}
+            </Text>
+          )}
+
           {/* Status label shown only once the session is active */}
-          {(hasStartedSession || recordingState !== 'idle' || !!error) && (
+          {!noSpeechToast && (hasStartedSession || recordingState !== 'idle' || !!error) && (
             <Text style={[styles.stateSubtitle, { color: micStateColor }]}>
               {stateSubtitle}
             </Text>
