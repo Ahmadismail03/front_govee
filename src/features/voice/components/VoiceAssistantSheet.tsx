@@ -315,6 +315,14 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         setRecordingState('playing');
         try {
           await playTts(decision.audioBase64, currentVoiceMode);
+
+          if (decision.terminalIntent === 'THANKS') {
+            useVoiceStore.getState().setShouldResumeListening(false);
+            setRecordingState('idle');
+            await handleClose();
+            return;
+          }
+
           setRecordingState('idle');
         } catch (err) {
           console.error('❌ playTts error:', err);

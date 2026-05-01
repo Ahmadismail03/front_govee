@@ -7,6 +7,7 @@ export type VoiceDecisionResponse = {
   message: string;
   audioBase64?: string;
   voiceOutputMode?: string;
+  terminalIntent?: 'THANKS';
 };
 
 /**

@@ -43,6 +43,8 @@ export type VoiceProcessResponse = {
   audioBase64?: string;
   /** Whether the audio should play through speaker or earpiece */
   voiceOutputMode?: 'speaker' | 'earpiece';
+  /** Terminal voice flow that must end the session after playback finishes */
+  terminalIntent?: 'THANKS';
 };
 
 
