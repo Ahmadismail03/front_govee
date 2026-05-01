@@ -314,11 +314,10 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
           setHasStartedSession(false);
           setRecordingState('error');
         }
-        // Small delay: give the WS onclose handler time to clear isStoppingRef
-        // before startStreaming() is called in the shouldResumeListening effect.
-        setTimeout(() => {
-          useVoiceStore.getState().setShouldResumeListening(true);
-        }, 150);
+        // Signal intent to resume mic. The shouldResumeListening effect will
+        // wait until both sessionId and isStopping are ready before calling
+        // startStreaming() — no arbitrary timeout needed.
+        useVoiceStore.getState().setShouldResumeListening(true);
       } else {
         setRecordingState('idle');
       }
@@ -402,19 +401,44 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     }
   }, [isStreaming, recordingState]);
 
-  // Auto-resume mic after TTS finishes
+  // Auto-resume mic after TTS finishes.
+  //
+  // This effect is the single place that translates the "intent to resume"
+  // flag (shouldResumeListening) into an actual startStreaming() call.
+  // It defers — without clearing the flag — if either precondition is not
+  // yet satisfied:
+  //   1. sessionId: startStreaming captures it in its useCallback closure;
+  //      calling it while null produces the "no sessionId" error.
+  //   2. isStopping: the previous WebSocket is still tearing down.
+  //
+  // Because sessionId and isStopping are in the deps array, React will
+  // re-run the effect automatically the moment either condition clears,
+  // making the retry deterministic (no setTimeout guesswork).
   useEffect(() => {
-    if (shouldResumeListening && isOpen) {
-      (async () => {
-        console.log('🎤 Auto-resuming mic after TTS');
-        useVoiceStore.getState().setShouldResumeListening(false);
-        await startStreaming();
-      })().catch((err) => {
-        console.error('🎤 Error in auto-resume mic:', err);
-        useVoiceStore.getState().setRecordingState('error');
-      });
+    if (!shouldResumeListening || !isOpen) return;
+
+    // Precondition 1 — session must exist before we open a new WS.
+    if (!sessionId) {
+      console.log('🎤 shouldResumeListening: deferring — sessionId not ready yet');
+      return; // keep shouldResumeListening=true; effect retries when sessionId changes
     }
-  }, [shouldResumeListening, isOpen, startStreaming]);
+
+    // Precondition 2 — previous WS teardown must be complete.
+    if (isStopping) {
+      console.log('🎤 shouldResumeListening: deferring — previous WS still stopping');
+      return; // keep shouldResumeListening=true; effect retries when isStopping→false
+    }
+
+    // Both conditions met — proceed.
+    (async () => {
+      console.log('🎤 Auto-resuming mic (sessionId ready, WS clear)');
+      useVoiceStore.getState().setShouldResumeListening(false);
+      await startStreaming();
+    })().catch((err) => {
+      console.error('🎤 Error in auto-resume mic:', err);
+      useVoiceStore.getState().setRecordingState('error');
+    });
+  }, [shouldResumeListening, isOpen, sessionId, isStopping, startStreaming]);
 
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [hasStartedSession, setHasStartedSession] = useState(false);
