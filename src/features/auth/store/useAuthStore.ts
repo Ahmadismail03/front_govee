@@ -16,6 +16,10 @@ function makeId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+// Prevents duplicate /auth/sync calls if verifyOtp is invoked concurrently
+// for the same session (e.g. rapid double-tap on the verify button).
+const _syncInFlight = new Set<string>();
+
 export type AuthStatus = 'hydrating' | 'anonymous' | 'authenticated';
 
 type AuthState = {
@@ -193,48 +197,54 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (sessionId && res.token) {
         const url = `${API_BASE}/decision/auth/sync`;
 
-        console.log("[AUTH→DECISION] preparing sync", {
+        console.log("[AUTH→DECISION] preparing sync (background)", {
           url,
           sessionId,
           tokenLength: res.token.length,
         });
 
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId,
-            authToken: res.token,
-          }),
-        });
-
-        console.log("[AUTH→DECISION] response status", response.status);
-
-        const rawText = await response.text();
-        // console.log(" [AUTH→DECISION] response body", rawText);
-
-        let decision: any;
-        try {
-          decision = JSON.parse(rawText);
-        } catch (e) {
-          console.error("❌ Failed to parse decision response", e);
-          throw new Error("Invalid decision response from /auth/sync");
-        }
-
-        // DEBUG 
-        console.log("[AUTH→DECISION] parsed", {
-          stage: decision?.stage,
-          message: decision?.message,
-          sessionId: decision?.sessionId,
-        });
-
-        if (decision.audioBase64) {
-          // Store the correct post-auth audio so VoiceAssistantSheet's isOpen
-          // effect can play it the moment the sheet reopens — no polling, no race.
-          // This overwrites any stale audio that may have been stored earlier.
-          const voice = useVoiceStore.getState();
-          voice.setPendingAudio(decision.audioBase64, voice.voiceMode);
-          console.log('[AUTH→DECISION] Correct post-auth audio stored in pendingAudio');
+        // Fire /auth/sync in the background — no await so TTS playback and
+        // navigation start immediately without being blocked by this call.
+        // The per-sessionId guard prevents duplicate syncs on rapid re-taps.
+        if (!_syncInFlight.has(sessionId)) {
+          _syncInFlight.add(sessionId);
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId,
+              authToken: res.token,
+            }),
+          })
+            .then(async (response) => {
+              console.log("[AUTH→DECISION] response status", response.status);
+              const rawText = await response.text();
+              let decision: any;
+              try {
+                decision = JSON.parse(rawText);
+              } catch (e) {
+                console.error("❌ Failed to parse decision response", e);
+                return;
+              }
+              console.log("[AUTH→DECISION] parsed", {
+                stage: decision?.stage,
+                message: decision?.message,
+                sessionId: decision?.sessionId,
+              });
+              if (decision.audioBase64) {
+                const voice = useVoiceStore.getState();
+                voice.setPendingAudio(decision.audioBase64, voice.voiceMode);
+                console.log('[AUTH→DECISION] Post-auth audio stored in pendingAudio');
+              }
+            })
+            .catch((err) => {
+              console.error("[AUTH→DECISION] background sync failed:", err?.message ?? err);
+            })
+            .finally(() => {
+              _syncInFlight.delete(sessionId);
+            });
+        } else {
+          console.log("[AUTH→DECISION] sync already in-flight for session, skipping duplicate");
         }
       }
 

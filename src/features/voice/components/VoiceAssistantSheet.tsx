@@ -187,6 +187,10 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const setPendingReopenAfterAuth = useVoiceStore((s) => s.setPendingReopenAfterAuth);
   const setRecordingState = useVoiceStore((s) => s.setRecordingState);
   const error = useVoiceStore((s) => s.error);
+  // Subscribed so the pendingAudio watcher effect fires reactively when
+  // /auth/sync delivers its response audio in the background.
+  const pendingAudio = useVoiceStore((s) => s.pendingAudio);
+  const pendingAudioMode = useVoiceStore((s) => s.pendingAudioMode);
 
   // Stable ref so handleFinalTranscript can call stopStreaming() even though
   // stopStreaming is declared later (returned from useStreamingRecorder).
@@ -195,6 +199,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   useEffect(() => {
     if (!isOpen) {
       setIsSessionReady(false);
+      setIsAwaitingPostAuthAudio(false);
       if (noSpeechTimerRef.current) {
         clearTimeout(noSpeechTimerRef.current);
         noSpeechTimerRef.current = null;
@@ -247,9 +252,12 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
             setRecordingState('error');
           });
       } else {
-        // No deferred audio — go straight to listening
-        console.log('🎤 No deferred audio; auto-starting mic after auth');
-        useVoiceStore.getState().setShouldResumeListening(true);
+        // Audio not yet available — /auth/sync is still in-flight in the background.
+        // Set the waiting flag so the pendingAudio watcher effect plays the TTS
+        // and only then starts STT. Starting STT here would open the mic while
+        // TTS is about to arrive, causing recording-during-playback conflicts.
+        console.log('⏳ No deferred audio yet — waiting for /auth/sync to deliver it');
+        setIsAwaitingPostAuthAudio(true);
       }
     }
   }, [isOpen]);
@@ -429,20 +437,78 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       return; // keep shouldResumeListening=true; effect retries when isStopping→false
     }
 
-    // Both conditions met — proceed.
+    // Precondition 3 — TTS must not be playing; mic must never open during audio.
+    if (recordingState === 'playing') {
+      console.log('🎤 shouldResumeListening: deferring — TTS is playing');
+      return; // keep shouldResumeListening=true; effect retries when recordingState changes
+    }
+
+    // All preconditions met — proceed.
     (async () => {
-      console.log('🎤 Auto-resuming mic (sessionId ready, WS clear)');
+      console.log('🎤 Auto-resuming mic (sessionId ready, WS clear, TTS done)');
       useVoiceStore.getState().setShouldResumeListening(false);
       await startStreaming();
     })().catch((err) => {
       console.error('🎤 Error in auto-resume mic:', err);
       useVoiceStore.getState().setRecordingState('error');
     });
-  }, [shouldResumeListening, isOpen, sessionId, isStopping, startStreaming]);
+  }, [shouldResumeListening, isOpen, sessionId, isStopping, recordingState, startStreaming]);
+
+  // ── Post-auth audio arrival watcher ────────────────────────────────────────
+  // /auth/sync runs in the background after OTP verification. If the sheet
+  // reopened before it finished (isAwaitingPostAuthAudio=true), this effect
+  // fires reactively the moment pendingAudio becomes available, stops any
+  // accidentally-started STT session, plays the TTS audio, and only then
+  // starts STT — guaranteeing strict turn-taking (system speaks first).
+  // A 5-second fallback handles silent failures of /auth/sync.
+  useEffect(() => {
+    if (!isAwaitingPostAuthAudio) return;
+
+    let fallbackId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      console.warn('⏰ Post-auth audio wait timed out — starting STT without TTS');
+      setIsAwaitingPostAuthAudio(false);
+      useVoiceStore.getState().setShouldResumeListening(true);
+    }, 5000);
+
+    const cancel = () => {
+      if (fallbackId !== null) { clearTimeout(fallbackId); fallbackId = null; }
+    };
+
+    if (!pendingAudio) {
+      // Audio not yet here — keep waiting; return cleanup to cancel timer on next run.
+      return cancel;
+    }
+
+    // Audio has arrived — cancel fallback and proceed immediately.
+    cancel();
+    setIsAwaitingPostAuthAudio(false);
+
+    // Stop any stray STT session that may have opened concurrently.
+    stopStreamingRef.current();
+
+    const audio = pendingAudio;
+    const mode = pendingAudioMode ?? 'earpiece';
+    useVoiceStore.getState().setPendingAudio(null);
+
+    console.log('🎵 Post-auth audio arrived — stopping STT, playing TTS, then starting STT');
+    setRecordingState('playing');
+    playTts(audio, mode)
+      .then(() => {
+        setRecordingState('idle');
+        useVoiceStore.getState().setShouldResumeListening(true);
+      })
+      .catch((err) => {
+        console.error('❌ Post-auth deferred audio error:', err);
+        setRecordingState('error');
+      });
+
+    return cancel;
+  }, [ pendingAudio, pendingAudioMode, setRecordingState]);
 
   const [isSessionReady, setIsSessionReady] = useState(false);
   const [hasStartedSession, setHasStartedSession] = useState(false);
   const [noSpeechToast, setNoSpeechToast] = useState(false);
+  const [isAwaitingPostAuthAudio, setIsAwaitingPostAuthAudio] = useState(false);
   const noSpeechTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -527,7 +593,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   // Spinning icon while processing
   useEffect(() => {
-    if (recordingState !== 'processing') {
+    if (recordingState !== 'processing' && !isAwaitingPostAuthAudio) {
       processingRotation.stopAnimation();
       processingRotation.setValue(0);
       return;
@@ -545,7 +611,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       processingRotation.stopAnimation();
       processingRotation.setValue(0);
     };
-  }, [recordingState]);
+  }, [recordingState, isAwaitingPostAuthAudio]);
 
   // Fade-in response card when a new assistant message arrives
   const lastAssistantMessage = useMemo(() => {
@@ -572,6 +638,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   /** Accent color that drives the mic button and rings */
   const micStateColor = useMemo(() => {
+    if (isAwaitingPostAuthAudio) return '#F59E0B'; // amber — same as processing
     switch (recordingState) {
       case 'listening': return '#22C55E'; // vibrant green
       case 'processing': return '#F59E0B'; // amber
@@ -579,21 +646,23 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       case 'error': return '#EF4444'; // red
       default: return colors.primary;
     }
-  }, [recordingState, colors.primary]);
+  }, [isAwaitingPostAuthAudio, recordingState, colors.primary]);
 
   /** Icon shown inside the mic button */
   const micStateIcon = useMemo<string>(() => {
+    if (isAwaitingPostAuthAudio) return 'sync';
     switch (recordingState) {
       case 'processing': return 'sync';
       case 'playing': return 'volume-up';
       case 'error': return 'error-outline';
       default: return 'mic';
     }
-  }, [recordingState]);
+  }, [isAwaitingPostAuthAudio, recordingState]);
 
   /** Short contextual text shown below the mic button */
   const stateSubtitle = useMemo(() => {
     if (error) return error;
+    if (isAwaitingPostAuthAudio) return t('voice.processing');
     switch (recordingState) {
       case 'listening': return t('voice.listening');
       case 'processing': return t('voice.processing');
@@ -601,7 +670,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       case 'error': return t('voice.error');
       default: return hasStartedSession ? '' : t('voice.tapToSpeak');
     }
-  }, [recordingState, error, hasStartedSession, t]);
+  }, [isAwaitingPostAuthAudio, recordingState, error, hasStartedSession, t]);
 
   const spinInterpolation = processingRotation.interpolate({
     inputRange: [0, 1],
@@ -726,6 +795,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   //      silently no-ops; keep the button disabled until teardown is confirmed.
   const isMicDisabled =
     !isSessionReady ||
+    isAwaitingPostAuthAudio ||
     (hasStartedSession && recordingState !== 'error') ||
     isStopping;
   const textDirStyle = useMemo(
@@ -784,7 +854,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         {/* ── Mic Zone ── */}
         <View style={styles.micZone}>
           {/* Icon + instruction shown only in pre-session idle — sits just above the mic */}
-          {!hasStartedSession && recordingState === 'idle' && (
+          {!hasStartedSession && recordingState === 'idle' && !isAwaitingPostAuthAudio && (
             <View style={styles.micPrompt}>
               <MaterialIcons name="record-voice-over" size={66} color={colors.primary} />
               <Text style={styles.micPromptText}>{t('voice.tapToSpeak')}</Text>
@@ -826,7 +896,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
               accessibilityRole="button"
               accessibilityLabel={t('voice.micButton')}
             >
-              {recordingState === 'processing' ? (
+              {recordingState === 'processing' || isAwaitingPostAuthAudio ? (
                 <Animated.View style={{ transform: [{ rotate: spinInterpolation }] }}>
                   <MaterialIcons name="sync" size={34} color="#fff" />
                 </Animated.View>
