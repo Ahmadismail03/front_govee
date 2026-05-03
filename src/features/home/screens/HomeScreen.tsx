@@ -399,39 +399,28 @@ export function HomeScreen({ navigation }: Props) {
 
   // Read raw slices — never pass a selector that returns a new array (causes infinite loop)
   const rawServices = useServicesStore((s) => s.services);
-  const servicesSearch = useServicesStore((s) => s.search);
-  const servicesCategory = useServicesStore((s) => s.category);
   const loadServices = useServicesStore((s) => s.load);
+  const ensureServicesByIds = useServicesStore((s) => s.ensureServicesByIds);
   const servicesLoading = useServicesStore((s) => s.isLoading);
 
-  // Stable derived list — recalculated only when inputs actually change
-  const allServices = useMemo(() => {
-    const enabled = rawServices.filter((s) => s.isEnabled);
-    const bySearch = servicesSearch.trim()
-      ? enabled.filter((s) => s.name.toLowerCase().includes(servicesSearch.trim().toLowerCase()))
-      : enabled;
-    if (servicesCategory === 'ALL') return bySearch;
-    return bySearch.filter((s) => s.category === servicesCategory);
-  }, [rawServices, servicesSearch, servicesCategory]);
-
-  // Fixed list of featured service IDs — rendered in this order, missing IDs are skipped
-  const FEATURED_SERVICE_IDS = [
+  const fallbackFeaturedServiceIds = [
     'CHANGE_MARITAL_STATUS_DIVORCE_CITIZENS',
     'ISSUE_ID_FIRST_TIME',
     'ISSUE_NEW_DRIVING_LICENSE',
     'ISSUE_PASSPORT_FIRST_TIME_OVER_18',
   ];
 
-  // featuredServices is derived from ALL enabled services, ignoring any active
-  // category or search filter so the home-page popular section is never empty
-  // just because the user selected a specific category in the Services screen.
+  const featuredServiceIds = home?.featuredServiceIds?.length
+    ? home.featuredServiceIds
+    : fallbackFeaturedServiceIds;
+
   const featuredServices = useMemo<Service[]>(() => {
     const allEnabled = rawServices.filter((s) => s.isEnabled);
     if (!allEnabled.length) return [];
-    return FEATURED_SERVICE_IDS
+    return featuredServiceIds
       .map((id) => allEnabled.find((s) => s.id === id))
       .filter((s): s is Service => Boolean(s));
-  }, [rawServices]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [featuredServiceIds, rawServices]);
 
   useEffect(() => {
     navigation.setOptions({ title: t('home.title') });
@@ -442,8 +431,12 @@ export function HomeScreen({ navigation }: Props) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!allServices.length && !servicesLoading) loadServices();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!rawServices.length && !servicesLoading) loadServices();
+  }, [loadServices, rawServices.length, servicesLoading]);
+
+  useEffect(() => {
+    ensureServicesByIds(featuredServiceIds);
+  }, [ensureServicesByIds, featuredServiceIds]);
 
   const navigateTo = (screen: string, params?: any) => {
     const parent = typeof navigation?.getParent === 'function' ? navigation.getParent() : null;

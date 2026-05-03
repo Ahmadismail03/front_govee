@@ -84,7 +84,17 @@ type BackendServicesListResponse = {
   total?: number;
   totalPages?: number;
   query?: string;
+  category?: string;
+  categories?: Array<{
+    key: string;
+    label: string;
+  }>;
   services: BackendServiceListItem[];
+};
+
+export type ServiceCategory = {
+  key: string;
+  label: string;
 };
 
 export type ServicesPage = {
@@ -93,6 +103,8 @@ export type ServicesPage = {
   total: number;
   totalPages: number;
   query: string;
+  category: string;
+  categories: ServiceCategory[];
   services: Service[];
 };
 
@@ -100,15 +112,18 @@ export async function getServices(args?: {
   page?: number;
   limit?: number;
   query?: string;
+  category?: string;
 }): Promise<ServicesPage> {
   const page = Math.max(1, Number(args?.page ?? 1));
   const limit = Math.min(50, Math.max(1, Number(args?.limit ?? 20)));
+  const category = String(args?.category ?? '').trim();
 
   const res = await getApiClient().get<BackendServicesListResponse>('/services', {
     params: {
       page,
       limit,
       query: args?.query,
+      category: category || undefined,
     },
   });
 
@@ -124,6 +139,8 @@ export async function getServices(args?: {
       total: Number(res.data.total ?? mapped.length),
       totalPages: Number(res.data.totalPages ?? 1),
       query: String(res.data.query ?? args?.query ?? ''),
+      category: String(res.data.category ?? category),
+      categories: res.data.categories ?? [],
       services: mapped,
     };
   }
@@ -150,6 +167,8 @@ export async function getServices(args?: {
     total: Number(res.data.total ?? enriched.length),
     totalPages: Number(res.data.totalPages ?? 1),
     query: String(res.data.query ?? args?.query ?? ''),
+    category: String(res.data.category ?? category),
+    categories: res.data.categories ?? [],
     services: enriched,
   };
 }

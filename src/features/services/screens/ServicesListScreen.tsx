@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ImageBackground } from 'react-native';
 import { useRtl } from '../../../core/i18n/useRtl';
 import { useTranslation } from 'react-i18next';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useBottomTabBarHeight, type BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { TabsParamList } from '../../../navigation/types';
 import { useServicesStore } from '../store/useServicesStore';
 import { ServiceCard } from '../components/ServiceCard';
@@ -20,6 +20,7 @@ export function ServicesListScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
   const { isRtl } = useRtl();
   const colors = useThemeColors();
+  const tabBarHeight = useBottomTabBarHeight();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -28,6 +29,7 @@ export function ServicesListScreen({ navigation }: Props) {
   const error = useServicesStore((s) => s.error);
   const search = useServicesStore((s) => s.search);
   const category = useServicesStore((s) => s.category);
+  const categories = useServicesStore((s) => s.categories);
   const page = useServicesStore((s) => s.page);
   const totalPages = useServicesStore((s) => s.totalPages);
   const setSearch = useServicesStore((s) => s.setSearch);
@@ -37,13 +39,13 @@ export function ServicesListScreen({ navigation }: Props) {
   const [searchDraft, setSearchDraft] = React.useState(search);
 
   // Subscribe to raw state only; derive lists with useMemo to avoid React 19 getSnapshot issues.
-  const rawServices = useServicesStore((s) => s.services);
+  const rawServices = useServicesStore((s) => s.browseServices);
 
   const listRef = useRef<FlatList<any>>(null);
 
   useEffect(() => {
     load();
-  }, [load, page, search]);
+  }, [load, page, search, category]);
 
   useEffect(() => {
     setSearchDraft(search);
@@ -65,21 +67,34 @@ export function ServicesListScreen({ navigation }: Props) {
     return bySearch.filter((s) => s.categoryKey === category);
   }, [enabledServices, search, category, i18n.language]);
 
-  const categories = useMemo(() => {
-    const uniq = Array.from(new Set(enabledServices.map((s) => s.categoryKey).filter(Boolean))).sort();
-    return ['ALL', ...uniq];
-  }, [enabledServices]);
-
-  // Build a map from categoryKey to Arabic category name
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
+    categories.forEach((item) => {
+      map[item.key] = item.label;
+    });
+
     enabledServices.forEach((s) => {
-      if (s.categoryKey && s.category) {
+      if (s.categoryKey && s.category && !map[s.categoryKey]) {
         map[s.categoryKey] = s.category;
       }
     });
+
     return map;
-  }, [enabledServices]);
+  }, [categories, enabledServices]);
+
+  const categoryKeys = useMemo(() => {
+    const backendKeys = categories.map((item) => item.key).filter(Boolean);
+    const baseKeys = backendKeys.length > 0
+      ? backendKeys
+      : Array.from(new Set(enabledServices.map((s) => s.categoryKey).filter(Boolean))).sort();
+
+    if (category === 'ALL') {
+      return ['ALL', ...baseKeys];
+    }
+
+    const remainingKeys = baseKeys.filter((key) => key !== category);
+    return ['ALL', category, ...remainingKeys];
+  }, [categories, enabledServices, category]);
 
   const categoryLabel = (c: string) => {
     if (c === 'ALL') return t('services.categoryAll');
@@ -135,9 +150,9 @@ export function ServicesListScreen({ navigation }: Props) {
         )}
       </View>
 
-      {categories.length > 1 ? (
+      {categoryKeys.length > 1 ? (
         <FlatList
-          data={categories}
+          data={categoryKeys}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chips}
@@ -162,7 +177,7 @@ export function ServicesListScreen({ navigation }: Props) {
       </>
     ),
     [
-      categories,
+      categoryKeys,
       category,
       colors.textTertiary,
       searchDraft,
@@ -178,6 +193,8 @@ export function ServicesListScreen({ navigation }: Props) {
 
   const visiblePages = getVisiblePages(page, totalPages, 5);
   const showPagination = totalPages > 1;
+  const canGoToPreviousPage = page > 1;
+  const canGoToNextPage = page < totalPages;
 
   return (
     <Screen edges={['left', 'right']}>
@@ -189,22 +206,23 @@ export function ServicesListScreen({ navigation }: Props) {
         ListFooterComponent={
           showPagination ? (
             <View style={styles.paginationWrap}>
-              <Pressable
-                onPress={() => {
-                  if (page <= 1) return;
-                  setPage(page - 1);
-                  listRef.current?.scrollToOffset({ offset: 0, animated: true });
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Previous"
-                style={[styles.pageNavButton, page <= 1 && styles.pageNavButtonDisabled]}
-              >
-                <Ionicons
-                  name={isRtl ? 'chevron-forward' : 'chevron-back'}
-                  size={20}
-                  color={page <= 1 ? colors.textTertiary : colors.text}
-                />
-              </Pressable>
+              {canGoToPreviousPage ? (
+                <Pressable
+                  onPress={() => {
+                    setPage(page - 1);
+                    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous"
+                  style={styles.pageNavButton}
+                >
+                  <Ionicons
+                    name={isRtl ? 'chevron-forward' : 'chevron-back'}
+                    size={20}
+                    color={colors.text}
+                  />
+                </Pressable>
+              ) : null}
 
               {visiblePages.map((p) => {
                 const selected = p === page;
@@ -225,26 +243,27 @@ export function ServicesListScreen({ navigation }: Props) {
                 );
               })}
 
-              <Pressable
-                onPress={() => {
-                  if (page >= totalPages) return;
-                  setPage(page + 1);
-                  listRef.current?.scrollToOffset({ offset: 0, animated: true });
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Next"
-                style={[styles.pageNavButton, page >= totalPages && styles.pageNavButtonDisabled]}
-              >
-                <Ionicons
-                  name={isRtl ? 'chevron-back' : 'chevron-forward'}
-                  size={20}
-                  color={page >= totalPages ? colors.textTertiary : colors.text}
-                />
-              </Pressable>
+              {canGoToNextPage ? (
+                <Pressable
+                  onPress={() => {
+                    setPage(page + 1);
+                    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next"
+                  style={styles.pageNavButton}
+                >
+                  <Ionicons
+                    name={isRtl ? 'chevron-back' : 'chevron-forward'}
+                    size={20}
+                    color={colors.text}
+                  />
+                </Pressable>
+              ) : null}
             </View>
           ) : null
         }
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: spacing.lg }]}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <ServiceCard
@@ -425,9 +444,6 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pageNavButtonDisabled: {
-    opacity: 0.5,
   },
   });
 }

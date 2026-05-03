@@ -61,7 +61,7 @@ export function AppointmentsListScreen({ navigation }: Props) {
   if (error) return <ErrorView message={error} onRetry={load} />;
 
   return (
-    <Screen>
+    <Screen edges={['left', 'right']}>
       {/* Title + icon under the red bar; Arabic: both on physical right (icon at edge). */}
       <View style={[styles.header, isRtl ? styles.headerRtl : styles.headerLtr]}>
         {isRtl ? (
