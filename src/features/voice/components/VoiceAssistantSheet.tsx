@@ -129,9 +129,9 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
   if (
     status.durationMillis &&
     status.positionMillis &&
-    status.positionMillis >= status.durationMillis * 0.98
+    status.positionMillis >= status.durationMillis * 0.9999
   ) {
-    finish("position>=98%");
+    finish("position>=99.99%");
   }
 });
 
@@ -156,7 +156,7 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
               status.positionMillis != null &&
               status.positionMillis >= status.durationMillis * 0.99
             ) {
-              finish('poll:position>=90%');
+              finish('poll:position>=99.9%');
               return;
             }
             if (status.didJustFinish) {
