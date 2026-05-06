@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, Image } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { TabsParamList } from '../../../navigation/types';
 import { Screen } from '../../../shared/ui/Screen';
@@ -46,6 +47,18 @@ export function AppointmentsListScreen({ navigation }: Props) {
     // Intentionally depend only on `token` to avoid re-running due to unstable action references.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  // Refresh whenever the tab/screen becomes focused so bookings/reschedules/cancels
+  // made from voice or other screens are reflected without full app reload.
+  useFocusEffect(
+    React.useCallback(() => {
+      if (token) {
+        void load();
+      }
+      return undefined;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token])
+  );
 
   const visible = useMemo(() => {
     if (!appointments || !Array.isArray(appointments)) return [];
