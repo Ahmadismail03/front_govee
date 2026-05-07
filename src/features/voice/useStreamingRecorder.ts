@@ -16,7 +16,25 @@
 
 import { useRef, useState, useCallback } from "react";
 import { Platform, PermissionsAndroid } from "react-native";
-import LiveAudioStream from "react-native-live-audio-stream";
+
+type LiveAudioStreamLike = {
+  init: (options: Record<string, unknown>) => void;
+  on: (event: string, handler: (chunk: string) => void) => void;
+  start: () => void;
+  stop: () => void;
+};
+
+function getLiveAudioStream(): LiveAudioStreamLike | null {
+  try {
+    // Lazy require prevents Expo Go iOS from crashing at bundle-load time
+    // when this native module is unavailable.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require("react-native-live-audio-stream");
+    return (mod?.default ?? mod) as LiveAudioStreamLike;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Short Arabic phrases → stop immediately on final transcript ──────────────
 const SHORT_PHRASE_SHORTCUTS = new Set([
@@ -117,7 +135,7 @@ export function useStreamingRecorder({
     setPartialTranscript("");
 
     // Stop mic capture
-    try { LiveAudioStream.stop(); } catch { /* ignore */ }
+    try { getLiveAudioStream()?.stop(); } catch { /* ignore */ }
 
     // Close WS gracefully
     const ws = wsRef.current;
@@ -165,6 +183,12 @@ export function useStreamingRecorder({
     if (!sessionId) {
       console.warn("🎙️ startStreaming: no sessionId");
       onError?.("لا يوجد جلسة صوتية");
+      return;
+    }
+
+    const liveAudioStream = getLiveAudioStream();
+    if (!liveAudioStream) {
+      onError?.("Streaming voice is not available in Expo Go on this device. Use Android Expo Go or a development build.");
       return;
     }
 
@@ -237,8 +261,8 @@ export function useStreamingRecorder({
             let silenceChunkCount = 0;
             let vadFired = false;          // prevent re-entry after mic is stopped
 
-            LiveAudioStream.init(AUDIO_OPTIONS);
-            LiveAudioStream.on("data", (base64Chunk: string) => {
+            liveAudioStream.init(AUDIO_OPTIONS);
+            liveAudioStream.on("data", (base64Chunk: string) => {
               if (vadFired) return;
               if (myConnectionId !== connectionIdRef.current) return;
               if (!isStreamingRef.current) return;
@@ -270,7 +294,7 @@ export function useStreamingRecorder({
                     ` — stopping mic, sending END_AUDIO`
                   );
                   // Stop mic so no more chunks are captured
-                  try { LiveAudioStream.stop(); } catch { /* ignore */ }
+                  try { liveAudioStream.stop(); } catch { /* ignore */ }
                   // Tell server: mic is done, please finalize the recognition
                   // (server calls recognizeStream.end() → Google emits final)
                   try { currentWs.send(JSON.stringify({ type: "END_AUDIO" })); } catch { /* ignore */ }
@@ -290,7 +314,7 @@ export function useStreamingRecorder({
 
               currentWs.send(bytes.buffer);
             });
-            LiveAudioStream.start();
+            liveAudioStream.start();
             console.log(`🎙️ Mic capture started (conn #${myConnectionId})`);
             break;
 
@@ -358,7 +382,7 @@ export function useStreamingRecorder({
           isStreamingRef.current = false;
           setIsStreaming(false);
           setPartialTranscript("");
-          try { LiveAudioStream.stop(); } catch { /* ignore */ }
+          try { liveAudioStream.stop(); } catch { /* ignore */ }
           onError?.("انقطع الاتصال بالخادم");
         }
       }

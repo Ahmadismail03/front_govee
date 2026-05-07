@@ -23,13 +23,13 @@ import { Audio } from "expo-av";
 import React from 'react';
 import { useRtl } from '../../../core/i18n/useRtl';
 import { RtlPhysicalRightBlock } from '../../../shared/ui/RtlPhysicalRightBlock';
+import { getApiBaseUrl } from '../../../core/api/axiosClient';
 
 // WebSocket base URL — set EXPO_PUBLIC_WS_BASE_URL in your .env
 // e.g. ws://192.168.1.x:3000  or  ws://your-tunnel.ngrok.io
 const WS_BASE_URL =
   process.env.EXPO_PUBLIC_WS_BASE_URL ??
-  process.env.EXPO_PUBLIC_API_BASE_URL?.replace(/^http/, 'ws').replace(/\/api$/, '') ??
-  'ws://localhost:3000';
+  getApiBaseUrl().replace(/^http/, 'ws').replace(/\/api$/, '');
 
 type Props = {
   onNavigate?: (screen: string, params?: any) => void;

@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance } from 'axios';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { getSecureItem, peekSecureItem } from '../storage/secureStorage';
 import { StorageKeys } from '../storage/keys';
 import { mockAdapter } from '../../mocks/mockAdapter';
@@ -10,22 +11,42 @@ import { handleTokenExpiration } from '../auth/authUtils';
 let realClient: AxiosInstance | null = null;
 let mockClient: AxiosInstance | null = null;
 
+function getExpoHostIp(): string | null {
+  const hostUri = (Constants.expoConfig as any)?.hostUri as string | undefined;
+  const debuggerHost = (Constants as any)?.manifest2?.extra?.expoGo?.debuggerHost as string | undefined;
+  const candidate = hostUri ?? debuggerHost;
+  if (!candidate) return null;
+  const host = candidate.split(':')[0]?.trim();
+  if (!host) return null;
+  return host;
+}
+
 export function getApiBaseUrl(): string {
-  // Priority 1: Use .env file if set (for physical devices)
-  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  // Priority 1: Use .env file if set and valid for current platform
+  const envBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  if (envBaseUrl) {
+    // 10.0.2.2 only works on Android emulator, never iOS/physical devices.
+    const isAndroidEmulatorOnlyHost = envBaseUrl.includes('10.0.2.2');
+    if (!(Platform.OS === 'ios' && isAndroidEmulatorOnlyHost)) {
+      return envBaseUrl;
+    }
   }
 
-  // Priority 2: Auto-detect for emulators/simulators
+  // Priority 2: If running in Expo Go, derive host machine IP dynamically.
+  const expoHostIp = getExpoHostIp();
+  if (expoHostIp) {
+    return `http://${expoHostIp}:4000`;
+  }
+
+  // Priority 3: Auto-detect for emulators/simulators
   if (Platform.OS === 'android') {
-    // Android emulator uses special IP to access host machine
     return 'http://10.0.2.2:4000';
-  } else if (Platform.OS === 'ios') {
-    // iOS simulator can use localhost
+  }
+  if (Platform.OS === 'ios') {
     return 'http://localhost:4000';
   }
 
-  // Priority 3: Fallback for physical devices (update .env.example)
+  // Priority 4: Last fallback for physical devices
   return 'http://192.168.1.2:4000';
 }
 
