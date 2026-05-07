@@ -149,7 +149,7 @@ export function OnboardingScreen({ navigation }: Props) {
           marginBottom: 0,
         },
         textWrapFinal: {
-          top: 0,
+          top: 88,
         },
         title: {
           fontSize: typography.xxxl,
@@ -157,12 +157,20 @@ export function OnboardingScreen({ navigation }: Props) {
           color: colors.primary,
           textAlign: 'center',
         },
+        titleFinal: {
+          fontSize: 36,
+        },
         description: {
           maxWidth: 360,
           fontSize: typography.lg,
           color: colors.textSecondary,
           lineHeight: typography.lg * typography.relaxed,
           textAlign: 'center',
+        },
+        descriptionFinal: {
+          maxWidth: 380,
+          fontSize: typography.base,
+          lineHeight: typography.base * typography.relaxed,
         },
         dotsRow: {
           flexDirection: isRtl ? 'row-reverse' : 'row',
@@ -215,72 +223,73 @@ export function OnboardingScreen({ navigation }: Props) {
         },
         finalCard: {
           width: '100%',
-          marginTop: spacing.xl,
+          marginTop: spacing.sm,
           backgroundColor: colors.surface,
           borderRadius: borderRadius.xl,
           borderWidth: 1,
           borderColor: colors.border,
-          padding: spacing.lg,
+          padding: spacing.xl,
           gap: spacing.md,
         },
         finalPreviewCard: {
           width: '100%',
-          maxWidth: 360,
-          marginTop: spacing.xl,
+          maxWidth: 460,
+          marginTop: 0,
           borderRadius: borderRadius.xl,
           backgroundColor: colors.surface,
           borderWidth: 1,
           borderColor: colors.border,
-          paddingVertical: spacing.xl,
-          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.xxxl,
+          paddingHorizontal: spacing.xl,
           alignItems: 'center',
-          gap: spacing.md,
+          gap: spacing.lg,
         },
         finalPreviewIcon: {
-          width: 62,
-          height: 62,
+          width: 74,
+          height: 74,
           borderRadius: borderRadius.full,
           backgroundColor: colors.primaryLight,
           alignItems: 'center',
           justifyContent: 'center',
         },
         finalPreviewTitle: {
-          fontSize: typography.lg,
+          fontSize: typography.xl,
           fontWeight: typography.bold,
           color: colors.text,
           textAlign: 'center',
         },
         finalPreviewPoint: {
           width: '100%',
-          fontSize: typography.base,
+          fontSize: typography.lg,
           color: colors.textSecondary,
-          textAlign: isRtl ? 'right' : 'left',
+          textAlign: 'left',
+          writingDirection: 'ltr',
           lineHeight: typography.base * typography.relaxed,
         },
         finalButtonPrimary: {
           borderRadius: borderRadius.full,
           backgroundColor: colors.primary,
-          paddingVertical: spacing.md,
+          paddingVertical: spacing.lg,
           alignItems: 'center',
           justifyContent: 'center',
         },
         finalButtonPrimaryLabel: {
           color: colors.headerText,
-          fontSize: typography.base,
+          fontSize: typography.lg,
           fontWeight: typography.bold,
         },
         finalButtonSecondary: {
           borderRadius: borderRadius.full,
           borderWidth: 1,
           borderColor: colors.primary,
-          paddingVertical: spacing.md,
+          paddingVertical: spacing.lg,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: colors.background,
         },
         finalButtonSecondaryLabel: {
           color: colors.primary,
-          fontSize: typography.base,
+          fontSize: typography.lg,
           fontWeight: typography.bold,
         },
       }),
@@ -320,8 +329,15 @@ export function OnboardingScreen({ navigation }: Props) {
               ) : null}
 
               <View style={[styles.textWrap, isFinalSlide && styles.textWrapFinal]}>
-                <Text style={styles.title}>{item.title}</Text>
-                {!isFinalSlide ? <Text style={styles.description}>{item.description}</Text> : null}
+                <Text
+                  style={[styles.title, isFinalSlide && styles.titleFinal]}
+                  numberOfLines={isFinalSlide ? 1 : undefined}
+                  adjustsFontSizeToFit={!!isFinalSlide}
+                  minimumFontScale={0.8}
+                >
+                  {item.title}
+                </Text>
+                <Text style={[styles.description, isFinalSlide && styles.descriptionFinal]}>{item.description}</Text>
               </View>
 
               {isFinalSlide ? (
@@ -331,8 +347,8 @@ export function OnboardingScreen({ navigation }: Props) {
                       <Ionicons name="shield-checkmark-outline" size={30} color={colors.primary} />
                     </View>
                     <Text style={styles.finalPreviewTitle}>{t('onboarding.final.previewTitle')}</Text>
-                    <Text style={styles.finalPreviewPoint}>{`\u2022 ${t('onboarding.final.previewPoint1')}`}</Text>
                     <Text style={styles.finalPreviewPoint}>{`\u2022 ${t('onboarding.final.previewPoint2')}`}</Text>
+                    <Text style={styles.finalPreviewPoint}>{`\u2022 ${t('onboarding.final.previewPoint1')}`}</Text>
                   </View>
 
                   <View style={styles.finalCard}>
