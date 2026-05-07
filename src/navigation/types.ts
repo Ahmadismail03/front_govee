@@ -11,6 +11,7 @@ export type TabsParamList = {
 export type RedirectTarget = { screen: string; params?: any };
 
 export type RootStackParamList = {
+  Onboarding: undefined;
   MainTabs: NavigatorScreenParams<TabsParamList> | undefined;
   ServiceDetails: { serviceId: string; expandFees?: boolean };
   ProfileEdit: undefined;

@@ -21,6 +21,31 @@ export const en = {
   app: {
     name: 'SpeakGov',
   },
+  onboarding: {
+    skip: 'Skip',
+    next: 'Next',
+    welcome: {
+      title: 'Welcome',
+      description: 'Your smart gateway to government services with speed and ease.',
+    },
+    booking: {
+      title: 'Book appointments easily',
+      description: 'Book your government appointments quickly and choose the best time in minutes.',
+    },
+    voice: {
+      title: 'Voice assistant',
+      description: 'Speak naturally and get instant, accurate help from your smart assistant.',
+    },
+    final: {
+      title: 'You can browse services without logging in',
+      description: 'Start as a guest, or sign in now to unlock personal features.',
+      previewTitle: 'What you get after login',
+      previewPoint1: 'Track and manage your personal appointments easily.',
+      previewPoint2: 'Faster experience with account-based personalized features.',
+      browseWithoutLogin: 'Browse without login',
+      loginNow: 'Login now',
+    },
+  },
   tabs: {
     home: 'Home',
     services: 'Services',

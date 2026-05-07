@@ -6,6 +6,17 @@ import type { Service } from '../../../core/domain/service';
  * Uses high-quality images from Unsplash and other sources
  */
 export function getServiceImageSource(service: Pick<Service, 'id' | 'category' | 'imageKey'>): { uri: string } | ImageSourcePropType {
+  const normalizedCategory = String(service.category ?? '').trim().toUpperCase();
+  const isIdentityCategory =
+    normalizedCategory === 'IDENTITY' ||
+    normalizedCategory.includes('IDENTITY') ||
+    String(service.category ?? '').includes('الهوية');
+
+  // Any service in identity category uses a shared category image.
+  if (isIdentityCategory) {
+    return require('../../../../assets/services/identity-category.png');
+  }
+
   // Service-specific images
   switch (service.id) {
     case 'svc_renew_id':

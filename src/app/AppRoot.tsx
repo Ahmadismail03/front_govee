@@ -10,6 +10,7 @@ import { ErrorView } from '../shared/ui/ErrorView';
 import { useThemeStore } from '../core/theme/useThemeStore';
 import { useLanguageChangeStore } from '../core/i18n/store/useLanguageChangeStore';
 import { useEffect, useState } from "react";
+import { hasCompletedOnboarding } from '../features/onboarding/storage/onboardingStorage';
 
 enableScreens();
 
@@ -18,6 +19,7 @@ export function AppRoot() {
   const [showLaunch, setShowLaunch] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const isLanguageChanging = useLanguageChangeStore((s) => s.isChanging);
 
   useEffect(() => {
@@ -32,6 +34,8 @@ export function AppRoot() {
         await initI18n();
         await useAuthStore.getState().bootstrap();
         await useThemeStore.getState().bootstrap();
+        const completed = await hasCompletedOnboarding();
+        if (mounted) setOnboardingDone(completed);
       } catch (e: any) {
         if (mounted) setBootError(e?.message ?? 'Failed to start app');
       } finally {
@@ -49,7 +53,7 @@ export function AppRoot() {
   }, [attempt]);
 
   // Show launch screen while booting or when language is changing
-  if (!booted || showLaunch || isLanguageChanging) {
+  if (!booted || showLaunch || isLanguageChanging || onboardingDone === null) {
     if (!booted) return <LoadingView />;
     return <LaunchScreen onFinish={() => {
       setShowLaunch(false);
@@ -58,5 +62,5 @@ export function AppRoot() {
   }
 
   if (bootError) return <ErrorView message={bootError} onRetry={() => setAttempt((x) => x + 1)} />;
-  return <RootNavigator />;
+  return <RootNavigator initialRouteName={onboardingDone ? 'MainTabs' : 'Onboarding'} />;
 }

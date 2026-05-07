@@ -24,16 +24,20 @@ function getExpoHostIp(): string | null {
 export function getApiBaseUrl(): string {
   // Priority 1: Use .env file if set and valid for current platform
   const envBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const expoHostIp = getExpoHostIp();
   if (envBaseUrl) {
-    // 10.0.2.2 only works on Android emulator, never iOS/physical devices.
+    // 10.0.2.2 is Android-emulator-only. If we can resolve Expo host IP,
+    // prefer that for physical devices (and Expo Go generally).
     const isAndroidEmulatorOnlyHost = envBaseUrl.includes('10.0.2.2');
+    if (isAndroidEmulatorOnlyHost && expoHostIp) {
+      return `http://${expoHostIp}:4000`;
+    }
     if (!(Platform.OS === 'ios' && isAndroidEmulatorOnlyHost)) {
       return envBaseUrl;
     }
   }
 
   // Priority 2: If running in Expo Go, derive host machine IP dynamically.
-  const expoHostIp = getExpoHostIp();
   if (expoHostIp) {
     return `http://${expoHostIp}:4000`;
   }

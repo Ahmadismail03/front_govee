@@ -1,9 +1,10 @@
 import React, { useCallback } from 'react';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RootStackParamList } from './types';
+import { Ionicons } from '@expo/vector-icons';
 import { MainTabs } from './TabsNavigator';
 import { ServiceDetailsScreen } from '../features/services/screens/ServiceDetailsScreen';
 import { AuthStartScreen } from '../features/auth/screens/AuthStartScreen';
@@ -35,14 +36,43 @@ import { useVoiceStore } from '../features/voice/store/useVoiceStore';
 import { useRtl } from '../core/i18n/useRtl';
 import { spacing } from '../shared/theme/tokens';
 import { RtlAlertProvider } from '../shared/ui/RtlAlert';
+import { OnboardingScreen } from '../features/onboarding/screens/OnboardingScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export function RootNavigator() {
+type RootNavigatorProps = {
+  initialRouteName?: keyof RootStackParamList;
+};
+
+export function RootNavigator({ initialRouteName = 'MainTabs' }: RootNavigatorProps) {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const colors = useThemeColors();
   const { isRtl: rtl } = useRtl();
   const insets = useSafeAreaInsets();
+
+  const renderAuthBackButton = useCallback(
+    (navigation: any) => (
+      <TouchableOpacity
+        onPress={() => {
+          if (navigation?.canGoBack?.()) {
+            navigation.goBack();
+            return;
+          }
+          navigation.replace('MainTabs');
+        }}
+        style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.xs }}
+        accessibilityRole="button"
+        accessibilityLabel="Back"
+      >
+        <Ionicons
+          name={rtl ? 'arrow-forward' : 'arrow-back'}
+          size={22}
+          color={colors.headerText}
+        />
+      </TouchableOpacity>
+    ),
+    [colors.headerText, rtl]
+  );
 
   // ── Reopen voice sheet once the navigation stack truly settles at root ──────
   //
@@ -83,6 +113,7 @@ export function RootNavigator() {
     <NavigationContainer key={`root-nav-${rtl ? 'rtl' : 'ltr'}`} ref={navigationRef}>
       <View style={[styles.root, { direction: rtl ? 'rtl' : 'ltr' }]}>
         <Stack.Navigator
+          initialRouteName={initialRouteName}
           screenOptions={({ route }) => {
             const isMainTabs = route.name === 'MainTabs';
             return {
@@ -137,6 +168,7 @@ export function RootNavigator() {
             };
           }}
         >
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
           <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
           <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} />
           <Stack.Screen
@@ -171,41 +203,42 @@ export function RootNavigator() {
           <Stack.Screen
             name="AuthStart"
             component={AuthStartScreen}
-            options={{
+            options={({ navigation }) => ({
               presentation: 'modal',
               headerTitle: () => null,
-              // Auth start keeps logo at left and menu button at right.
-              headerLeft: () => (
-                <View style={styles.headerRight}>
-                  <HeaderLogo />
-                </View>
-              ),
+              headerBackVisible: false,
+              headerLeft: () => renderAuthBackButton(navigation),
               headerRight: () => (
                 <View style={styles.headerRight}>
                   <HeaderMenuButton dropdownEdge="trailing" modalStackHeader />
                 </View>
               ),
-            }}
+            })}
           />
           <Stack.Screen
             name="AuthRegister"
             component={AuthRegisterScreen}
-            options={{
+            options={({ navigation }) => ({
               presentation: 'modal',
               headerTitle: () => null,
-              headerLeft: () => (
-                <View style={styles.headerRight}>
-                  <HeaderLogo />
-                </View>
-              ),
+              headerBackVisible: false,
+              headerLeft: () => renderAuthBackButton(navigation),
               headerRight: () => (
                 <View style={styles.headerRight}>
                   <HeaderMenuButton dropdownEdge="trailing" modalStackHeader />
                 </View>
               ),
-            }}
+            })}
           />
-          <Stack.Screen name="AuthOtp" component={AuthOtpScreen} options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="AuthOtp"
+            component={AuthOtpScreen}
+            options={({ navigation }) => ({
+              presentation: 'modal',
+              headerBackVisible: false,
+              headerLeft: () => renderAuthBackButton(navigation),
+            })}
+          />
 
           <Stack.Screen name="BookingSelectDate">
             {(props) => (
