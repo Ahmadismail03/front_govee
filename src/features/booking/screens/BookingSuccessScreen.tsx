@@ -9,6 +9,7 @@ import { Button } from '../../../shared/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, borderRadius, iconSizes } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
+import { triggerSuccessHaptic } from '../../../shared/utils/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingSuccess'>;
 
@@ -21,6 +22,7 @@ export function BookingSuccessScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     loadPref();
+    triggerSuccessHaptic();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

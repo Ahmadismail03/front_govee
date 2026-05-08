@@ -1,9 +1,9 @@
 import { Buffer } from "buffer";
 (global as any).Buffer = Buffer;
 import { enableScreens } from 'react-native-screens';
+import * as SplashScreen from 'expo-splash-screen';
 import { initI18n } from '../core/i18n/init';
 import { RootNavigator } from '../navigation/RootNavigator';
-import { LoadingView } from '../shared/ui/LoadingView';
 import { LaunchScreen } from '../shared/ui/LaunchScreen';
 import { useAuthStore } from '../features/auth/store/useAuthStore';
 import { ErrorView } from '../shared/ui/ErrorView';
@@ -13,6 +13,9 @@ import { useEffect, useState } from "react";
 import { hasCompletedOnboarding } from '../features/onboarding/storage/onboardingStorage';
 
 enableScreens();
+void SplashScreen.preventAutoHideAsync().catch(() => {
+  // Ignore if splash is already controlled elsewhere.
+});
 
 export function AppRoot() {
   const [booted, setBooted] = useState(false);
@@ -52,9 +55,19 @@ export function AppRoot() {
     };
   }, [attempt]);
 
-  // Show launch screen while booting or when language is changing
-  if (!booted || showLaunch || isLanguageChanging || onboardingDone === null) {
-    if (!booted) return <LoadingView />;
+  const appReady = booted && (onboardingDone !== null || bootError !== null);
+
+  useEffect(() => {
+    if (!appReady) return;
+    SplashScreen.hideAsync().catch(() => {
+      // Ignore hide errors in dev/reload races.
+    });
+  }, [appReady]);
+
+  if (!appReady) return null;
+
+  // Show launch screen after app bootstrap, while language is changing.
+  if (showLaunch || isLanguageChanging) {
     return <LaunchScreen onFinish={() => {
       setShowLaunch(false);
       useLanguageChangeStore.getState().setIsChanging(false);

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated } from 'react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRtl } from '../../../core/i18n/useRtl';
 import type { Service } from '../../../core/domain/service';
@@ -13,9 +14,10 @@ import { getFeeDisplayDescription, getServiceDisplayName } from '../utils/locali
 type Props = {
   service: Service;
   onPress: () => void;
+  index?: number;
 };
 
-export function ServiceCard({ service, onPress }: Props) {
+export function ServiceCard({ service, onPress, index = 0 }: Props) {
   const { t, i18n } = useTranslation();
   const colors = useThemeColors();
   const { isRtl } = useRtl();
@@ -31,6 +33,26 @@ export function ServiceCard({ service, onPress }: Props) {
   const hasMultipleFees = feesBreakdown.length > 1;
 const currency = 'ILS';
   const imageSource = getServiceImageSource(service);
+  const enterTranslateY = useRef(new Animated.Value(14)).current;
+  const enterOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const delay = Math.min(index * 70, 420);
+    Animated.parallel([
+      Animated.timing(enterTranslateY, {
+        toValue: 0,
+        duration: 280,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.timing(enterOpacity, {
+        toValue: 1,
+        duration: 240,
+        delay,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [enterOpacity, enterTranslateY, index]);
 
   const styles = React.useMemo(
     () =>
@@ -228,16 +250,17 @@ const currency = 'ILS';
   );
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-      ]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={displayName}
-    >
-      <View style={styles.imageContainer}>
+    <Animated.View style={{ opacity: enterOpacity, transform: [{ translateY: enterTranslateY }] }}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          pressed && styles.cardPressed,
+        ]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={displayName}
+      >
+        <View style={styles.imageContainer}>
         <Image
           source={imageSource}
           style={styles.serviceImage}
@@ -339,8 +362,9 @@ const currency = 'ILS';
             )}
           </View>
         </View>
-      </View>
-    </Pressable>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 

@@ -32,7 +32,6 @@ export function ServicesListScreen({ navigation }: Props) {
   const categories = useServicesStore((s) => s.categories);
   const page = useServicesStore((s) => s.page);
   const totalPages = useServicesStore((s) => s.totalPages);
-  const setSearch = useServicesStore((s) => s.setSearch);
   const setCategory = useServicesStore((s) => s.setCategory);
   const setPage = useServicesStore((s) => s.setPage);
 
@@ -56,7 +55,7 @@ export function ServicesListScreen({ navigation }: Props) {
   }, [rawServices]);
 
   const services = useMemo(() => {
-    const trimmed = search.trim();
+    const trimmed = searchDraft.trim();
     const bySearch = trimmed
       ? enabledServices.filter((s) =>
           getServiceDisplayName(s, i18n.language).toLowerCase().includes(trimmed.toLowerCase())
@@ -65,7 +64,7 @@ export function ServicesListScreen({ navigation }: Props) {
 
     if (category === 'ALL') return bySearch;
     return bySearch.filter((s) => s.categoryKey === category);
-  }, [enabledServices, search, category, i18n.language]);
+  }, [enabledServices, searchDraft, category, i18n.language]);
 
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -132,7 +131,6 @@ export function ServicesListScreen({ navigation }: Props) {
           value={searchDraft}
           onChangeText={setSearchDraft}
           returnKeyType="search"
-          onSubmitEditing={() => setSearch(searchDraft)}
           placeholder={t('services.searchPlaceholder')}
           placeholderTextColor={colors.textTertiary}
           accessibilityLabel={t('services.searchPlaceholder')}
@@ -141,7 +139,6 @@ export function ServicesListScreen({ navigation }: Props) {
           <Pressable
             onPress={() => {
               setSearchDraft('');
-              setSearch('');
             }}
             style={styles.clearButton}
           >
@@ -182,7 +179,6 @@ export function ServicesListScreen({ navigation }: Props) {
       colors.textTertiary,
       searchDraft,
       setCategory,
-      setSearch,
       styles,
       t,
     ]
@@ -265,9 +261,10 @@ export function ServicesListScreen({ navigation }: Props) {
         }
         contentContainerStyle={[styles.list, { paddingBottom: spacing.lg }]}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <ServiceCard
             service={item}
+            index={index}
             onPress={() =>
               navigation
                 .getParent()

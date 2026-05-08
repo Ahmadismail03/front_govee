@@ -18,7 +18,6 @@ export function LaunchScreen({ onFinish }: LaunchScreenProps) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [gifFailed, setGifFailed] = useState(false);
   const [gifReady, setGifReady] = useState(false);
-  const startedAtRef = useRef(Date.now());
   const finishedRef = useRef(false);
 
   const { gifUri, pngUri } = useMemo(() => {

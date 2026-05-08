@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Animated } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { TabsParamList } from './types';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,27 @@ import { useVoiceStore } from '../features/voice/store/useVoiceStore';
 const Tab = createBottomTabNavigator<TabsParamList>();
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+function AnimatedTabIcon({ name, size, color, focused }: { name: IoniconName; size: number; color: string; focused: boolean }) {
+  const scale = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    if (!focused) {
+      scale.setValue(1);
+      return;
+    }
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 1.18, duration: 110, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: 140, useNativeDriver: true }),
+    ]).start();
+  }, [focused, scale]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Ionicons name={name} size={size} color={color} />
+    </Animated.View>
+  );
+}
 
 function VoiceTabScreen() {
   const setIsOpen = useVoiceStore((s) => s.setIsOpen);
@@ -89,7 +110,7 @@ export function MainTabs() {
         tabBarIcon: ({ color, size, focused }) => {
           if (route.name === 'HomeTab') {
             const name: IoniconName = focused ? 'home' : 'home-outline';
-            return <Ionicons name={name} size={size} color={color} />;
+            return <AnimatedTabIcon name={name} size={size} color={color} focused={focused} />;
           }
 
           let name: IoniconName;
@@ -102,7 +123,7 @@ export function MainTabs() {
           } else {
             name = 'person-outline';
           }
-          return <Ionicons name={name} size={size} color={color} />;
+          return <AnimatedTabIcon name={name} size={size} color={color} focused={focused} />;
         },
         // Flipped as requested: title+menu on the left, logo on the right.
         headerLeft: () => (

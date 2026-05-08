@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View, Image } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View, Image, Animated } from 'react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -136,9 +136,10 @@ export function AppointmentsListScreen({ navigation }: Props) {
         keyExtractor={(item, index) => `${item.id}-${item.startTime}-${item.date}-${index}`}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <AppointmentRow
             item={item}
+            index={index}
             colors={colors}
             styles={styles}
             forceLeftLayout={forceLeftLayout}
@@ -163,12 +164,14 @@ function AppointmentRow({
   colors,
   styles,
   forceLeftLayout = false,
+  index = 0,
 }: {
   item: Appointment;
   onPress: () => void;
   colors: ThemeColors;
   styles: Styles;
   forceLeftLayout?: boolean;
+  index?: number;
 }) {
   const { t } = useTranslation();
   const { isRtl } = useRtl();
@@ -198,15 +201,36 @@ function AppointmentRow({
     : require('../../../../assets/promo/promo_services.png');
 
   const timeRange = `${item.startTime}`;
+  const enterTranslateY = useRef(new Animated.Value(12)).current;
+  const enterOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const delay = Math.min(index * 60, 360);
+    Animated.parallel([
+      Animated.timing(enterTranslateY, {
+        toValue: 0,
+        duration: 260,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.timing(enterOpacity, {
+        toValue: 1,
+        duration: 220,
+        delay,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [enterOpacity, enterTranslateY, index]);
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={item.referenceNumber}
-    >
-      <View style={styles.rowHeader}>
+    <Animated.View style={{ opacity: enterOpacity, transform: [{ translateY: enterTranslateY }] }}>
+      <Pressable
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={item.referenceNumber}
+      >
+        <View style={styles.rowHeader}>
         <View style={styles.rowImageContainer}>
           <Image
             source={imageSource}
@@ -237,8 +261,9 @@ function AppointmentRow({
             </Text>
           </View>
         </View>
-      </View>
-    </Pressable>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
