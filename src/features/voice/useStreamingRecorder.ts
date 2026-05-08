@@ -224,7 +224,15 @@ export function useStreamingRecorder({
     // ── onmessage ─────────────────────────────────────────────────────────────
     ws.onmessage = (event) => {
       if (myConnectionId !== connectionIdRef.current) return; // stale connection
-      if (typeof event.data !== "string") return;
+      let rawData = event.data;
+
+if (rawData instanceof ArrayBuffer) {
+  rawData = new TextDecoder().decode(rawData);
+}
+
+if (typeof rawData !== "string") return;
+
+const msg = JSON.parse(rawData);
 
       try {
         const msg = JSON.parse(event.data) as {
@@ -347,6 +355,13 @@ export function useStreamingRecorder({
             break;
 
           case "error":
+            // "Could not understand speech" is a normal voice UX case, not a hard failure.
+            if ((msg.message ?? "").includes("لم أتمكن من فهم الكلام")) {
+              console.warn(`⚠️ STT no-speech (conn #${myConnectionId}):`, msg.message);
+              _hardStop("no speech");
+              onNoSpeech?.();
+              break;
+            }
             console.error(`❌ STT backend error (conn #${myConnectionId}):`, msg.message);
             _hardStop("backend error");
             onError?.(msg.message ?? "خطأ في التعرف على الكلام");

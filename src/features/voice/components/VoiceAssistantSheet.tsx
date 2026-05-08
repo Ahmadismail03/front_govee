@@ -1,5 +1,6 @@
 import {
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -182,6 +183,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const setIsOpen = useVoiceStore((s) => s.setIsOpen);
   const messages = useVoiceStore((s) => s.messages);
   const recordingState = useVoiceStore((s) => s.recordingState);
+  const liveTranscript = useVoiceStore((s) => s.liveTranscript);
   const authStatus = useAuthStore((s) => s.authStatus);
   const setAuthTriggeredByVoice = useVoiceStore((s) => s.setAuthTriggeredByVoice);
   const setPendingReopenAfterAuth = useVoiceStore((s) => s.setPendingReopenAfterAuth);
@@ -195,6 +197,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   // Stable ref so handleFinalTranscript can call stopStreaming() even though
   // stopStreaming is declared later (returned from useStreamingRecorder).
   const stopStreamingRef = useRef<() => void>(() => {});
+  const chatScrollRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -264,6 +267,42 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
   const shouldResumeListening = useVoiceStore((s) => s.shouldResumeListening);
 
+  const resetVoiceSheetInPlace = useCallback(async () => {
+    // Stop any ongoing playback/capture, but keep the sheet open.
+    if (currentSound) {
+      try {
+        await currentSound.stopAsync();
+        await currentSound.unloadAsync();
+      } catch { /* ignore */ }
+      currentSound = null;
+    }
+    try {
+      const LiveAudioStream = require('react-native-live-audio-stream').default;
+      LiveAudioStream.stop();
+    } catch { /* ignore */ }
+    try { stopStreamingRef.current(); } catch { /* ignore */ }
+    try { useVoiceStore.getState().setShouldResumeListening(false); } catch { /* ignore */ }
+    try { useVoiceStore.getState().setPendingAudio(null); } catch { /* ignore */ }
+
+    // Clear UI/session state to "freshly opened" mode.
+    try { useVoiceStore.getState().clear(); } catch { /* ignore */ }
+    setNoSpeechToast(false);
+    setIsAwaitingPostAuthAudio(false);
+    setRecordingState('idle');
+    setHasStartedSession(false);
+
+    // Recreate a fresh session without leaving the voice sheet.
+    const freshSessionId = `vs_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    useVoiceStore.getState().setSessionId(freshSessionId);
+    try {
+      await createVoiceSession(freshSessionId);
+      console.log('💾 Fresh voice session persisted to DB', freshSessionId);
+    } catch (err) {
+      console.warn('⚠️ Failed to persist fresh voice session:', err);
+    }
+    setIsSessionReady(true);
+  }, [setRecordingState]);
+
   // ── Streaming recorder ────────────────────────────────────────────────────
   const handleFinalTranscript = useCallback(async (transcript: string) => {
     // NOTE: The streaming hook has already called _hardStop() before invoking
@@ -281,6 +320,19 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     console.log(`🎙️ Final transcript: "${transcript}"`);
     setRecordingState('processing');
     useVoiceStore.getState().setLiveTranscript('');
+    const normalizedTranscript = transcript.trim();
+    const wantsToExit =
+      /(^|\s)(لا اريد شيء|لا أريد شيء|ما بدي اشي|ما بدي شيء|ما بدي شي|لا بدي|لا شكرا|لا شكرًا|شكرا خلص|خلص)(\s|$)/.test(
+        normalizedTranscript
+      );
+
+    // If user explicitly wants to stop, reset immediately instead of sending
+    // another request that may return the generic "كيف يمكنني مساعدتك".
+    if (wantsToExit) {
+      console.log('🧹 User asked to end voice session — resetting voice sheet in place');
+      await resetVoiceSheetInPlace();
+      return;
+    }
 
     // Pre-switch audio session to playback mode
     Audio.setAudioModeAsync({
@@ -299,8 +351,12 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       }
 
       console.log('🗣 Assistant:', decision.message, 'Stage:', decision.stage);
-
       if (decision.stage === 'IDENTITY' && authStatus !== 'authenticated') {
+        if (wantsToExit) {
+          console.log('🧹 Exit utterance detected at IDENTITY stage — resetting voice sheet in place');
+          await resetVoiceSheetInPlace();
+          return;
+        }
         console.log('🔐 Identity stage — navigating to AuthStart');
         // stopStreaming already called by hook — no manual call needed
         setPendingReopenAfterAuth(true);
@@ -316,10 +372,18 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         try {
           await playTts(decision.audioBase64, currentVoiceMode);
 
-          if (decision.terminalIntent === 'THANKS') {
+          const terminalIntent = String((decision as any).terminalIntent ?? '').toUpperCase();
+          const shouldEndSession =
+            (decision as any).completed === true ||
+            terminalIntent === 'THANKS' ||
+            terminalIntent === 'CANCEL' ||
+            terminalIntent === 'DONE' ||
+            terminalIntent === 'GOODBYE';
+
+          if (shouldEndSession) {
             useVoiceStore.getState().setShouldResumeListening(false);
             setRecordingState('idle');
-            await handleClose();
+            await resetVoiceSheetInPlace();
             return;
           }
 
@@ -343,17 +407,28 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       setHasStartedSession(false);
       setRecordingState('error');
     }
-  }, [authStatus, onNavigate]);
+  }, [authStatus, onNavigate, resetVoiceSheetInPlace]);
 
   const handlePartialTranscript = useCallback((transcript: string) => {
     useVoiceStore.getState().setLiveTranscript(transcript);
   }, []);
 
   const handleStreamError = useCallback((message: string) => {
-    console.error('❌ Streaming error:', message);
+    console.warn('❌ Streaming error:', message);
     // Clear in-progress transcript and prevent a stale auto-resume from looping.
     useVoiceStore.getState().setLiveTranscript('');
     useVoiceStore.getState().setShouldResumeListening(false);
+    if (message.includes('لم أتمكن من فهم الكلام')) {
+      // Treat "not understood" as a gentle UX hint, not a hard failure.
+      setRecordingState('idle');
+      setNoSpeechToast(true);
+      if (noSpeechTimerRef.current) clearTimeout(noSpeechTimerRef.current);
+      noSpeechTimerRef.current = setTimeout(() => {
+        noSpeechTimerRef.current = null;
+        setNoSpeechToast(false);
+      }, 2200);
+      return;
+    }
     // Show error and ungate the mic button immediately.
     // isMicDisabled now uses isStopping (from the hook) to block premature retries
     // while the WebSocket is still closing — no timing assumption needed.
@@ -519,6 +594,18 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const [isAwaitingPostAuthAudio, setIsAwaitingPostAuthAudio] = useState(false);
   const noSpeechTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  useEffect(() => {
+    if (!hasStartedSession) return;
+    const id = setTimeout(() => {
+      try {
+        chatScrollRef.current?.scrollToEnd({ animated: true });
+      } catch {
+        // Ignore race with unmount/layout.
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, [messages, liveTranscript, hasStartedSession]);
 
   React.useEffect(() => {
     console.log("🎤 VoiceAssistantSheet mounted, onNavigate:", typeof onNavigate);
@@ -744,6 +831,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
     setRecordingState('idle');
     setIsSessionReady(false);
     setHasStartedSession(false);
+    try { useVoiceStore.getState().clear(); } catch { /* ignore */ }
     setIsOpen(false);
 
     console.log('✅ [handleClose] Voice session fully terminated');
@@ -845,7 +933,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
         {/* ── Body ── */}
         <View style={styles.body}>
-          {!lastAssistantMessage && (
+          {!hasStartedSession && !lastAssistantMessage && (
             <View style={styles.empty}>
               <RtlPhysicalRightBlock isRtl={isRtl}>
                 <Text style={[styles.emptySub, textDirStyle]}>{t('voice.examplePrompts')}</Text>
@@ -856,6 +944,43 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
                 </View>
               </RtlPhysicalRightBlock>
             </View>
+          )}
+
+          {hasStartedSession && (
+            <ScrollView
+              ref={chatScrollRef}
+              style={styles.chatScroll}
+              contentContainerStyle={styles.chatContent}
+              keyboardShouldPersistTaps="handled"
+              onContentSizeChange={() => {
+                try {
+                  chatScrollRef.current?.scrollToEnd({ animated: true });
+                } catch {
+                  // Ignore layout race.
+                }
+              }}
+            >
+              {messages.map((m) => {
+                const isUser = m.role === 'user';
+                return (
+                  <View key={m.id} style={[styles.bubbleRow, isUser ? styles.userRow : styles.assistantRow]}>
+                    <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+                      <Text style={[styles.bubbleText, isUser ? styles.userBubbleText : styles.assistantBubbleText, textDirStyle]}>
+                        {m.text}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+
+              {!!liveTranscript && recordingState === 'listening' && (
+                <View style={styles.userRow}>
+                  <View style={[styles.bubble, styles.userBubbleDraft]}>
+                    <Text style={[styles.bubbleText, styles.assistantBubbleText, textDirStyle]}>{liveTranscript}</Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
           )}
         </View>
 
@@ -1000,6 +1125,57 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     // ── Body ─────────────────────────────────────────────────────────────────
     body: {
       flex: 1,
+    },
+    chatScroll: {
+      flex: 1,
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.md,
+    },
+    chatContent: {
+      paddingBottom: spacing.xxxl,
+      gap: spacing.sm,
+    },
+    bubbleRow: {
+      width: '100%',
+      flexDirection: 'row',
+    },
+    userRow: {
+      justifyContent: 'flex-end',
+    },
+    assistantRow: {
+      justifyContent: 'flex-start',
+    },
+    bubble: {
+      maxWidth: '86%',
+      borderRadius: borderRadius.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    userBubble: {
+      backgroundColor: colors.primary,
+      borderTopRightRadius: borderRadius.sm,
+    },
+    userBubbleDraft: {
+      backgroundColor: colors.primaryLight,
+      borderTopRightRadius: borderRadius.sm,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    assistantBubble: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: borderRadius.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    bubbleText: {
+      fontSize: typography.base,
+      lineHeight: 22,
+    },
+    userBubbleText: {
+      color: colors.headerText,
+    },
+    assistantBubbleText: {
+      color: colors.text,
     },
     empty: {
       flex: 1,
