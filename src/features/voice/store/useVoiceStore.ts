@@ -188,12 +188,16 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         createdAt: Date.now(),
       };
 
-      set((s) => ({
-        sessionId: res.sessionId,
-        messages: [...s.messages, assistantMsg],
-        recordingState: 'idle',
-        error: null,
-      }));
+      if (res.stage === 'IDENTITY') {
+        set({ sessionId: res.sessionId, recordingState: 'idle', error: null });
+      } else {
+        set((s) => ({
+          sessionId: res.sessionId,
+          messages: [...s.messages, assistantMsg],
+          recordingState: 'idle',
+          error: null,
+        }));
+      }
 
       /**
        * 🔥 AUTO-REPLY LOGIC (CORE FIX)

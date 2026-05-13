@@ -897,8 +897,8 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   const textDirStyle = useMemo(
     () =>
       isRtl
-        ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
-        : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const }),
+        ? ({ textAlign: 'left' as const, writingDirection: 'rtl' as const })
+        : ({ textAlign: 'right' as const, writingDirection: 'ltr' as const }),
     [isRtl]
   );
   const insets = useSafeAreaInsets();
