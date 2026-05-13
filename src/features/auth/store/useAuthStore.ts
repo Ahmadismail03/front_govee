@@ -231,8 +231,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 message: decision?.message,
                 sessionId: decision?.sessionId,
               });
+              const voice = useVoiceStore.getState();
+              if (decision.message) {
+                voice.addAssistantMessage(decision.message);
+              }
               if (decision.audioBase64) {
-                const voice = useVoiceStore.getState();
                 voice.setPendingAudio(decision.audioBase64, voice.voiceMode);
                 console.log('[AUTH→DECISION] Post-auth audio stored in pendingAudio');
               }

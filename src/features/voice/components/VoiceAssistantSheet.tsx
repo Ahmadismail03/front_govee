@@ -1140,10 +1140,10 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       flexDirection: 'row',
     },
     userRow: {
-      justifyContent: 'flex-end',
+      justifyContent: 'flex-start',
     },
     assistantRow: {
-      justifyContent: 'flex-start',
+      justifyContent: 'flex-end',
     },
     bubble: {
       maxWidth: '86%',
@@ -1153,17 +1153,17 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
     },
     userBubble: {
       backgroundColor: colors.primary,
-      borderTopRightRadius: borderRadius.sm,
+      borderTopLeftRadius: borderRadius.sm,
     },
     userBubbleDraft: {
       backgroundColor: colors.primaryLight,
-      borderTopRightRadius: borderRadius.sm,
+      borderTopLeftRadius: borderRadius.sm,
       borderWidth: 1,
       borderColor: colors.primary,
     },
     assistantBubble: {
       backgroundColor: colors.surface,
-      borderTopLeftRadius: borderRadius.sm,
+      borderTopRightRadius: borderRadius.sm,
       borderWidth: 1,
       borderColor: colors.border,
     },

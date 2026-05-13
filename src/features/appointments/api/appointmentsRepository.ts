@@ -21,7 +21,10 @@ function toYmd(d: Date): string {
 }
 
 function toHm(d: Date): string {
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const h24 = d.getHours();
+  const period = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 || 12;
+  return `${h12}:${pad2(d.getMinutes())} ${period}`;
 }
 
 function buildReferenceNumber(id: string): string {

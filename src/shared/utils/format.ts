@@ -16,8 +16,12 @@ export function formatFees(amount: number): string {
 }
 
 export function formatTimeLabel(hm: string): string {
-  const [h, m] = String(hm).split(':');
+  const parts = String(hm).split(':');
+  const h = parts[0];
+  const m = parts[1];
   if (!h || !m) return hm;
-  const hour = String(Number(h));
-  return m === '00' ? hour : `${hour}:${m}`;
+  const h24 = Number(h);
+  const period = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 || 12;
+  return m === '00' ? `${h12} ${period}` : `${h12}:${m} ${period}`;
 }
