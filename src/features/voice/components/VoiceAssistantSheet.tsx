@@ -901,6 +901,13 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         : ({ textAlign: 'right' as const, writingDirection: 'ltr' as const }),
     [isRtl]
   );
+    const textDirStyle2 = useMemo(
+    () =>
+      isRtl
+        ? ({ textAlign: 'right' as const, writingDirection: 'rtl' as const })
+        : ({ textAlign: 'left' as const, writingDirection: 'ltr' as const }),
+    [isRtl]
+  );
   const insets = useSafeAreaInsets();
   /** Modal + translucent status bar: pad the header so content clears the notch / status bar. */
   const headerPaddingTop = spacing.xl + spacing.md;
@@ -936,11 +943,11 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
           {!hasStartedSession && !lastAssistantMessage && (
             <View style={styles.empty}>
               <RtlPhysicalRightBlock isRtl={isRtl}>
-                <Text style={[styles.emptySub, textDirStyle]}>{t('voice.examplePrompts')}</Text>
+                <Text style={[styles.emptySub, textDirStyle2]}>{t('voice.examplePrompts')}</Text>
                 <View style={styles.examples}>
-                  <Text style={[styles.example, textDirStyle]}>{t('voice.example1')}</Text>
-                  <Text style={[styles.example, textDirStyle]}>{t('voice.example2')}</Text>
-                  <Text style={[styles.example, textDirStyle]}>{t('voice.example3')}</Text>
+                  <Text style={[styles.example, textDirStyle2]}>{t('voice.example1')}</Text>
+                  <Text style={[styles.example, textDirStyle2]}>{t('voice.example2')}</Text>
+                  <Text style={[styles.example, textDirStyle2]}>{t('voice.example3')}</Text>
                 </View>
               </RtlPhysicalRightBlock>
             </View>
