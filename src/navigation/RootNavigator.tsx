@@ -31,6 +31,7 @@ import { TechnicalSupportScreen } from '../features/support/screens/TechnicalSup
 import { ReportProblemScreen } from '../features/support/screens/ReportProblemScreen';
 import { SettingsScreen } from '../features/settings/screens/SettingsScreen';
 import { ProfileEditScreen } from '../features/profile/screens/ProfileEditScreen';
+import { FloatingVoiceButton } from '../features/voice/components/FloatingVoiceButton';
 import { VoiceAssistantSheet } from '../features/voice/components/VoiceAssistantSheet';
 import { useVoiceStore } from '../features/voice/store/useVoiceStore';
 import { useRtl } from '../core/i18n/useRtl';
@@ -39,6 +40,7 @@ import { RtlAlertProvider } from '../shared/ui/RtlAlert';
 import { OnboardingScreen } from '../features/onboarding/screens/OnboardingScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const FAB_VISIBLE_ROUTE_NAMES = new Set(['HomeTab', 'ServicesTab', 'AppointmentsTab']);
 
 type RootNavigatorProps = {
   initialRouteName?: keyof RootStackParamList;
@@ -49,6 +51,11 @@ export function RootNavigator({ initialRouteName = 'MainTabs' }: RootNavigatorPr
   const colors = useThemeColors();
   const { isRtl: rtl } = useRtl();
   const insets = useSafeAreaInsets();
+  const [activeRouteName, setActiveRouteName] = React.useState<string | undefined>(undefined);
+
+  const syncActiveRouteName = useCallback(() => {
+    setActiveRouteName(navigationRef.getCurrentRoute()?.name);
+  }, [navigationRef]);
 
   const renderAuthBackButton = useCallback(
     (navigation: any) => (
@@ -110,7 +117,12 @@ export function RootNavigator({ initialRouteName = 'MainTabs' }: RootNavigatorPr
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <NavigationContainer key={`root-nav-${rtl ? 'rtl' : 'ltr'}`} ref={navigationRef}>
+    <NavigationContainer
+      key={`root-nav-${rtl ? 'rtl' : 'ltr'}`}
+      ref={navigationRef}
+      onReady={syncActiveRouteName}
+      onStateChange={syncActiveRouteName}
+    >
       <View style={[styles.root, { direction: rtl ? 'rtl' : 'ltr' }]}>
         <Stack.Navigator
           initialRouteName={initialRouteName}
@@ -337,6 +349,7 @@ export function RootNavigator({ initialRouteName = 'MainTabs' }: RootNavigatorPr
           <Stack.Screen name="HelpTopicDetails" component={HelpTopicDetailsScreen} />
         </Stack.Navigator>
 
+        {FAB_VISIBLE_ROUTE_NAMES.has(activeRouteName ?? '') ? <FloatingVoiceButton /> : null}
         <VoiceAssistantSheet onNavigate={useCallback((screen: string, params?: any) => {
           if (navigationRef.current) {
             try {

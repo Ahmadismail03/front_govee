@@ -134,107 +134,6 @@ const gridStyles = StyleSheet.create({
   },
 });
 
-// ─── Floating Voice FAB ───────────────────────────────────────────────────────
-function VoiceFAB({
-  onPress,
-  side,
-  bottomOffset,
-}: {
-  onPress: () => void;
-  side: 'left' | 'right';
-  bottomOffset: number;
-}) {
-  const pulse = useRef(new Animated.Value(1)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.55)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(pulse, { toValue: 1.6, duration: 950, useNativeDriver: true }),
-          Animated.timing(pulseOpacity, { toValue: 0, duration: 950, useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(pulse, { toValue: 1, duration: 0, useNativeDriver: true }),
-          Animated.timing(pulseOpacity, { toValue: 0.55, duration: 0, useNativeDriver: true }),
-        ]),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse, pulseOpacity]);
-
-  return (
-    <View
-      style={[
-        fabStyles.wrapper,
-        side === 'right' ? fabStyles.alignLeft : fabStyles.alignRight,
-        { bottom: bottomOffset },
-      ]}
-      pointerEvents="box-none"
-    >
-      {/* Container so ring and FAB share the same centre point */}
-      <View style={fabStyles.fabContainer}>
-        <Animated.View
-          style={[
-            fabStyles.ring,
-            { transform: [{ scale: pulse }], opacity: pulseOpacity },
-          ]}
-        />
-        <TouchableOpacity
-          onPress={onPress}
-          activeOpacity={0.85}
-          style={fabStyles.fab}
-          accessibilityRole="button"
-          accessibilityLabel="Voice Assistant"
-        >
-          <Ionicons name="mic-outline" size={26} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-const fabStyles = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    paddingHorizontal: 20,
-  },
-  alignRight: {
-    alignItems: 'flex-end',
-  },
-  alignLeft: {
-    alignItems: 'flex-start',
-  },
-  /** Centres the ring behind the FAB button */
-  fabContainer: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  /** Pulsing ring — same size as FAB; scale animation enlarges it */
-  ring: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#C4161C',
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#C4161C',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.lg,
-  },
-});
-
 // ─── Service Card ─────────────────────────────────────────────────────────────
 function ServiceCard({
   service,
@@ -379,16 +278,22 @@ const serviceCardStyles = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export function HomeScreen({ navigation }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const colors = useThemeColors();
   const { width } = useWindowDimensions();
   const { isRtl } = useRtl();
   const insets = useSafeAreaInsets();
-  const activeLanguage = i18n.resolvedLanguage || i18n.language;
-  const fabSide: 'left' | 'right' = activeLanguage.startsWith('ar') ? 'right' : 'left';
 
   const carouselRef = useRef<FlatList<Promo> | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const carouselViewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 });
+  const onCarouselViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+      const visibleIndex = viewableItems[0]?.index;
+      if (visibleIndex == null) return;
+      setCarouselIndex(visibleIndex);
+    }
+  );
 
   const setVoiceOpen = useVoiceStore((s) => s.setIsOpen);
 
@@ -477,6 +382,8 @@ export function HomeScreen({ navigation }: Props) {
     ],
     [t]
   );
+
+  const activeCarouselDotIndex = isRtl ? promos.length - 1 - carouselIndex : carouselIndex;
 
   // ── Quick actions ──────────────────────────────────────────────────────────
   const actions = useMemo<QuickAction[]>(
@@ -586,10 +493,13 @@ export function HomeScreen({ navigation }: Props) {
                 ref={(r) => { carouselRef.current = r; }}
                 data={promos}
                 horizontal
-                style={{ direction: 'ltr' }}
+                style ={{ direction:'ltr' }}
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
+                bounces={false}
                 keyExtractor={(i) => i.key}
+                viewabilityConfig={carouselViewabilityConfig.current}
+                onViewableItemsChanged={onCarouselViewableItemsChanged.current}
                 getItemLayout={(_, index) => ({
                   length: carouselWidth,
                   offset: carouselWidth * index,
@@ -600,11 +510,6 @@ export function HomeScreen({ navigation }: Props) {
                     offset: info.averageItemLength * info.index,
                     animated: true,
                   });
-                }}
-                onMomentumScrollEnd={(ev) => {
-                  const x = ev.nativeEvent.contentOffset.x;
-                  const idx = carouselWidth > 0 ? Math.round(x / carouselWidth) : 0;
-                  setCarouselIndex(Math.max(0, Math.min(idx, promos.length - 1)));
                 }}
                 nestedScrollEnabled
                 renderItem={({ item }) => (
@@ -703,10 +608,10 @@ export function HomeScreen({ navigation }: Props) {
                           key={p.key}
                           style={{
                             height: 5,
-                            width: idx === carouselIndex ? 24 : 5,
+                            width: idx === activeCarouselDotIndex ? 24 : 5,
                             borderRadius: 3,
                             backgroundColor:
-                              idx === carouselIndex
+                              idx === activeCarouselDotIndex
                                 ? '#FFFFFF'
                                 : 'rgba(255,255,255,0.38)',
                           }}
@@ -865,12 +770,6 @@ export function HomeScreen({ navigation }: Props) {
             ) : null}
           </>
         }
-      />
-      <VoiceFAB
-        key={`home-fab-${fabSide}`}
-        onPress={() => setVoiceOpen(true)}
-        side={fabSide}
-        bottomOffset={Math.max(insets.bottom - 30)}
       />
     </View>
   );
