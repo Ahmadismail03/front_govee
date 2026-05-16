@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput } from 'react-native';
 import { useRtl } from '../../../core/i18n/useRtl';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { spacing, typography, borderRadius, shadows } from '../../../shared/theme/tokens';
 import { useThemeColors } from '../../../shared/theme/useTheme';
 import { trustThisDeviceForNationalId } from '../utils/trustedDevice';
+import { useLockCountdown } from '../../../shared/utils/lockCountdown';
 import { showRtlAlert } from '../../../shared/ui/RtlAlert';
 type Props = NativeStackScreenProps<RootStackParamList, 'AuthOtp'>;
 
@@ -24,7 +25,15 @@ export function AuthOtpScreen({ navigation, route }: Props) {
   const isLoading = useAuthStore((s) => s.isLoading);
 
   const [rememberDevice, setRememberDevice] = useState(false);
-  const [otpError, setOtpError] = useState<string | null>(null);
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null);
+  const { isLocked } = useLockCountdown(lockedUntil);
+
+  // Auto-clear lock state once the countdown expires so the user can retry.
+  useEffect(() => {
+    if (!isLocked && lockedUntil) {
+      setLockedUntil(null);
+    }
+  }, [isLocked, lockedUntil]);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: isRtl ? '' : t('auth.otpTitle') });
@@ -48,8 +57,7 @@ export function AuthOtpScreen({ navigation, route }: Props) {
       const newOtp = [...otp];
       newOtp[index] = value;
       setOtp(newOtp);
-      setOtpError(null); // clear error when user types
-      
+
       if (value && index < 5) {
         inputRefs.current[index + 1]?.focus();
       }
@@ -96,16 +104,34 @@ export function AuthOtpScreen({ navigation, route }: Props) {
         navigation.replace('MainTabs');
       }
     } catch (e: any) {
+      const code = e?.response?.data?.code;
       const backendMessage = e?.response?.data?.message;
-      const message = backendMessage ?? e?.message ?? t('auth.otpError');
-      // Show inline error — clearly visible without needing to dismiss a dialog
-      setOtpError('رمز التحقق غير صحيح، حاول مرة أخرى.');
-      // Also show Alert with full backend detail (contact support option)
-      showRtlAlert(
-        t('auth.errorTitle'),
-        message,
-        [{ text: t('common.ok'), style: 'cancel' }]
-      );
+
+      if (code === 'OTP_LOCKED') {
+        // Store expiry for button-disable countdown.
+        const details = e?.response?.data?.details as { lockedUntil?: string; remainingSeconds?: number } | undefined;
+        if (details?.lockedUntil) {
+          setLockedUntil(details.lockedUntil);
+        } else if (details?.remainingSeconds) {
+          setLockedUntil(new Date(Date.now() + details.remainingSeconds * 1000).toISOString());
+        } else {
+          setLockedUntil(new Date(Date.now() + 15 * 60 * 1000).toISOString());
+        }
+        // Show as popup — same pattern as all other OTP errors.
+        showRtlAlert(
+          t('auth.errorTitle'),
+          backendMessage ?? 'تم تجاوز عدد المحاولات المسموح بها. حاول مرة أخرى لاحقاً.',
+          [{ text: t('common.ok'), style: 'cancel' }]
+        );
+      } else {
+        setLockedUntil(null);
+        const message = backendMessage ?? e?.message ?? t('auth.otpError');
+        showRtlAlert(
+          t('auth.errorTitle'),
+          message,
+          [{ text: t('common.ok'), style: 'cancel' }]
+        );
+      }
     }
   };
 
@@ -272,15 +298,13 @@ export function AuthOtpScreen({ navigation, route }: Props) {
             ))}
           </View>
 
-          {otpError ? (
-            <Text style={styles.otpErrorText}>{otpError}</Text>
-          ) : null}
+
         </View>
 
         <Button
           title={t('auth.verify')}
           onPress={onVerify}
-          disabled={otp.some(d => !d)}
+          disabled={otp.some(d => !d) || isLocked}
           loading={isLoading}
         />
 

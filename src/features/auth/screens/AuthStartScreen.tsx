@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { showRtlAlert } from '../../../shared/ui/RtlAlert';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../../../navigation/types';
@@ -52,17 +53,17 @@ export function AuthStartScreen({ navigation, route }: Props) {
       
       // Validation
       if (!nid || !phone) {
-        Alert.alert(t('auth.errorTitle'), t('auth.fillRequiredFields'));
+        showRtlAlert(t('auth.errorTitle'), t('auth.fillRequiredFields'), [{ text: t('common.ok'), style: 'cancel' }]);
         return;
       }
 
       if (nid.length < 9) {
-        Alert.alert(t('auth.errorTitle'), 'رقم الهوية يجب أن يكون 9 أرقام على الأقل');
+        showRtlAlert(t('auth.errorTitle'), 'رقم الهوية يجب أن يكون 9 أرقام على الأقل', [{ text: t('common.ok'), style: 'cancel' }]);
         return;
       }
 
       if (phone.length < 10) {
-        Alert.alert(t('auth.errorTitle'), 'رقم الهاتف يجب أن يكون 10 أرقام على الأقل');
+        showRtlAlert(t('auth.errorTitle'), 'رقم الهاتف يجب أن يكون 10 أرقام على الأقل', [{ text: t('common.ok'), style: 'cancel' }]);
         return;
       }
 
@@ -90,12 +91,12 @@ export function AuthStartScreen({ navigation, route }: Props) {
 
       const name = fullName.trim();
       if (!name) {
-        Alert.alert(t('auth.errorTitle'), t('auth.fillRequiredFields'));
+        showRtlAlert(t('auth.errorTitle'), t('auth.fillRequiredFields'), [{ text: t('common.ok'), style: 'cancel' }]);
         return;
       }
 
       if (name.length < 4) {
-        Alert.alert(t('auth.errorTitle'), 'الاسم يجب أن يكون 4 أحرف على الأقل');
+        showRtlAlert(t('auth.errorTitle'), 'الاسم يجب أن يكون 4 أحرف على الأقل', [{ text: t('common.ok'), style: 'cancel' }]);
         return;
       }
 
@@ -113,7 +114,7 @@ export function AuthStartScreen({ navigation, route }: Props) {
           ? t('auth.fillRequiredFields')
           : backendMessage ?? e?.message ?? t('auth.errorMessage');
 
-      Alert.alert(
+      showRtlAlert(
         t('auth.errorTitle'),
         message,
         [{ text: t('common.ok'), style: 'cancel' }]
