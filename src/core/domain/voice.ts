@@ -39,7 +39,9 @@ export type VoiceProcessResponse = {
   stage: VoiceStage;
   message: string;
   action?: Exclude<VoiceAction, undefined>;
-  /** Base64-encoded MP3 audio rendered by the TTS pipeline on the backend */
+  /** HTTP URL to stream/download MP3 audio instead of base64 in JSON */
+  audioUrl?: string;
+  /** Base64-encoded MP3 audio (legacy, for backward compatibility) */
   audioBase64?: string;
   /** Whether the audio should play through speaker or earpiece */
   voiceOutputMode?: 'speaker' | 'earpiece';

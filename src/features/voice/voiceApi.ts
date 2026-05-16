@@ -5,6 +5,7 @@ export type VoiceDecisionResponse = {
   sessionId: string;
   stage: string;
   message: string;
+  audioUrl?: string;
   audioBase64?: string;
   voiceOutputMode?: string;
   terminalIntent?: 'THANKS';

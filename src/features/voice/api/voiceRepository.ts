@@ -1,7 +1,6 @@
 // voiceRepository.ts
 import { getApiClient } from '../../../core/api/axiosClient';
 import type { VoiceProcessResponse } from '../../../core/domain/voice';
-import i18n from '../../../core/i18n/init';
 
 export async function processVoiceMessage(
   text: string,
@@ -10,22 +9,31 @@ export async function processVoiceMessage(
   const client = getApiClient();
 
   try {
- console.log("VOICE API OUT", { text, sessionId });
-const { data } = await client.post<VoiceProcessResponse>('/decision/next', {
-  text,
-  sessionId,
-});
-console.log("VOICE API IN", data.message,data.stage);
-return data;
+    console.log("VOICE API OUT", { text, sessionId });
+
+    const { data } = await client.post<VoiceProcessResponse>(
+      '/decision/next',
+      {
+        text,
+        sessionId,
+      }
+    );
+
+    console.log("VOICE API IN", data.message, data.stage);
+
+    return data;
 
   } catch (e: any) {
-    // Frontend-resilient fallback (must match VoiceProcessResponse shape)
-    return {
-      ok: false,
-      sessionId: sessionId ?? `voice_session_${Date.now()}`,
-      stage: 'SERVICE',
-      message: i18n.t('voice.assistantFallback'),
-    };
-  }
 
+    console.error("VOICE REQUEST FAILED");
+    console.error("MESSAGE:", e?.message);
+    console.error("CODE:", e?.code);
+    console.error("STATUS:", e?.response?.status);
+    console.error("DATA:", e?.response?.data);
+    console.error("FULL:", JSON.stringify(e, null, 2));
+
+    throw e;
+
+    // احذفي fallback مؤقتًا للتشخيص
+  }
 }

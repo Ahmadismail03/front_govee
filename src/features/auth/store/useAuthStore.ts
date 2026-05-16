@@ -230,14 +230,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 stage: decision?.stage,
                 message: decision?.message,
                 sessionId: decision?.sessionId,
+                hasAudioUrl: !!decision?.audioUrl,
+                hasAudioBase64: !!decision?.audioBase64,
               });
               const voice = useVoiceStore.getState();
               if (decision.message) {
                 voice.addAssistantMessage(decision.message);
               }
-              if (decision.audioBase64) {
+              // Prefer audioUrl (new, efficient) over audioBase64 (legacy)
+              if (decision.audioUrl) {
+                voice.setPendingAudio(decision.audioUrl, voice.voiceMode);
+                console.log('[AUTH→DECISION] Post-auth audio URL stored in pendingAudio');
+              } else if (decision.audioBase64) {
                 voice.setPendingAudio(decision.audioBase64, voice.voiceMode);
-                console.log('[AUTH→DECISION] Post-auth audio stored in pendingAudio');
+                console.log('[AUTH→DECISION] Post-auth audio base64 stored in pendingAudio');
               }
             })
             .catch((err) => {

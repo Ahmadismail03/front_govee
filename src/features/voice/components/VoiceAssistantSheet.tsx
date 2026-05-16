@@ -38,6 +38,145 @@ type Props = {
 
 let currentSound: Audio.Sound | null = null;
 
+/**
+ * Detects whether the string is a URL or base64 audio.
+ * URLs start with http:// or https://
+ * Base64 is typically a long alphanumeric string without slashes.
+ */
+function isAudioUrl(str: string): boolean {
+  return str.startsWith('http://') || str.startsWith('https://');
+}
+
+/**
+ * Play TTS audio from a URL instead of base64.
+ * Downloads/streams the MP3 file and plays it.
+ * This is more efficient for large audio files and reduces JSON payload size.
+ */
+export async function playTtsFromUrl(audioUrl: string, voiceMode: 'speaker' | 'earpiece' = 'earpiece'): Promise<void> {
+  const playStartTime = Date.now();
+  console.log(`🎵 [playTtsFromUrl] START - voiceMode=${voiceMode}, audioUrl=${audioUrl}`);
+
+  if (!audioUrl || typeof audioUrl !== 'string' || audioUrl.length < 10) {
+    console.warn('⚠️ [playTtsFromUrl] Received invalid or empty audioUrl. Aborting playback.');
+    return;
+  }
+
+  // Stop and unload previous sound if exists
+  if (currentSound) {
+    try {
+      await currentSound.stopAsync();
+      await currentSound.unloadAsync();
+    } catch (err) {
+      console.warn('Failed to stop previous sound:', err);
+    }
+    currentSound = null;
+  }
+
+  // Switch audio session to playback mode.
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    shouldDuckAndroid: true,
+    playThroughEarpieceAndroid: voiceMode === 'earpiece',
+  });
+
+  // Load sound from URL directly — no need to write to disk
+  const { sound } = await Audio.Sound.createAsync(
+    { uri: audioUrl },
+    { 
+      progressUpdateIntervalMillis: 50,
+      androidImplementation: 'MediaPlayer' 
+    }
+  );
+
+  currentSound = sound;
+
+  const loadedStatus = await sound.getStatusAsync();
+  const durationMs =
+    loadedStatus.isLoaded && loadedStatus.durationMillis && loadedStatus.durationMillis > 0
+      ? loadedStatus.durationMillis
+      : 25_000;
+
+  console.log(`🎵 [playTtsFromUrl] LOADED - duration=${durationMs}ms, isLoaded=${loadedStatus.isLoaded}`);
+
+  return new Promise<void>((resolve) => {
+    let done = false;
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let playbackStarted = false;
+
+    const finish = (reason: string) => {
+      if (done) return;
+      done = true;
+
+      if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+      if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+
+      sound.setOnPlaybackStatusUpdate(null);
+      sound.unloadAsync().catch(console.warn);
+      currentSound = null;
+
+      const elapsedMs = Date.now() - playStartTime;
+      console.log(`🎵 [playTtsFromUrl] FINISHED via "${reason}" in ${elapsedMs}ms — resolving Promise`);
+      resolve();
+    };
+
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (done) return;
+      if (!status.isLoaded) return;
+
+      if (status.didJustFinish) {
+        finish("didJustFinish");
+        return;
+      }
+      if (
+        status.durationMillis &&
+        status.positionMillis &&
+        status.positionMillis >= status.durationMillis * 0.9999
+      ) {
+        finish("position>=99.99%");
+      }
+    });
+
+    safetyTimer = setTimeout(() => {
+      console.warn(`⚠️ [playTtsFromUrl] Safety timer fired after ${durationMs + 300}ms — forcing finish`);
+      finish('safety-timer');
+    }, durationMs + 300);
+
+    sound.playAsync()
+      .then(() => {
+        console.log('🎵 [playTtsFromUrl] Playback started successfully');
+        playbackStarted = true;
+
+        pollInterval = setInterval(async () => {
+          if (done) return;
+          try {
+            const status = await sound.getStatusAsync();
+            if (!status.isLoaded) { finish('poll:unloaded'); return; }
+            if (status.didJustFinish) { finish('poll:didJustFinish'); return; }
+            if (
+              status.durationMillis && status.durationMillis > 0 &&
+              status.positionMillis != null &&
+              status.positionMillis >= status.durationMillis * 0.99
+            ) {
+              finish('poll:position>=99.9%');
+              return;
+            }
+            if (status.didJustFinish) {
+              finish('poll:didJustFinish');
+            }          } catch {
+            finish('poll:error');
+          }
+        }, 50);
+      })
+      .catch((e) => {
+        console.warn('playAsync error:', e);
+        finish('playAsync-error');
+      });
+  });
+}
+
 export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpiece' = 'earpiece'): Promise<void> {
   const playStartTime = Date.now();
   console.log(`🎵 [playTts] START - voiceMode=${voiceMode}, audioLength=${base64Audio?.length || 0} bytes`);
@@ -92,7 +231,7 @@ export async function playTts(base64Audio: string, voiceMode: 'speaker' | 'earpi
   const durationMs =
     loadedStatus.isLoaded && loadedStatus.durationMillis && loadedStatus.durationMillis > 0
       ? loadedStatus.durationMillis
-      : 15_000;
+      : 25_000;
 
   console.log(`🎵 [playTts] LOADED - duration=${durationMs}ms, isLoaded=${loadedStatus.isLoaded}`);
 
@@ -244,7 +383,13 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
       if (audio) {
         console.log('🎵 Playing deferred IDENTITY audio after auth');
         setRecordingState('playing');
-        playTts(audio, audioMode)
+        
+        // Detect whether audio is URL or base64 and play accordingly
+        const playPromise = isAudioUrl(audio)
+          ? playTtsFromUrl(audio, audioMode)
+          : playTts(audio, audioMode);
+        
+        playPromise
           .then(() => {
             setRecordingState('idle');
             // Auto-start mic so the user can re-ask their request
@@ -367,10 +512,17 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
         return;
       }
 
-      if (decision.audioBase64) {
+      if (decision.audioBase64 || decision.audioUrl) {
         setRecordingState('playing');
         try {
-          await playTts(decision.audioBase64, currentVoiceMode);
+          // Prefer audioUrl (new, efficient approach) over audioBase64 (legacy)
+          if (decision.audioUrl) {
+            console.log('🎵 Playing audio from URL:', decision.audioUrl);
+            await playTtsFromUrl(decision.audioUrl, currentVoiceMode);
+          } else {
+            console.log('🎵 Playing audio from base64 (legacy)');
+            await playTts(decision.audioBase64!, currentVoiceMode);
+          }
 
           const terminalIntent = String((decision as any).terminalIntent ?? '').toUpperCase();
           const shouldEndSession =
@@ -612,79 +764,103 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
   }, [onNavigate]);
 
   // ─── Animation refs ────────────────────────────────────────────────────────
-  const pulseScale1 = useRef(new Animated.Value(1)).current;
-  const pulseOpacity1 = useRef(new Animated.Value(0)).current;
-  const pulseScale2 = useRef(new Animated.Value(1)).current;
-  const pulseOpacity2 = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
   const processingRotation = useRef(new Animated.Value(0)).current;
   const responseCardOpacity = useRef(new Animated.Value(0)).current;
   const prevMessageRef = useRef('');
 
-  // Dual expanding rings while listening
+  // Waveform bar heights (5 bars) for listening/processing animation
+  const barAnims = useRef([
+    new Animated.Value(0.3),
+    new Animated.Value(0.3),
+    new Animated.Value(0.3),
+    new Animated.Value(0.3),
+    new Animated.Value(0.3),
+  ]).current;
+
+  // Minimal glow breathing while active (listening, processing, playing)
   useEffect(() => {
-    if (recordingState !== 'listening') {
-      pulseScale1.setValue(1);
-      pulseOpacity1.setValue(0);
-      pulseScale2.setValue(1);
-      pulseOpacity2.setValue(0);
+    const isActive =
+      recordingState === 'listening' ||
+      recordingState === 'processing' ||
+      recordingState === 'playing' ||
+      isAwaitingPostAuthAudio;
+
+    if (!isActive) {
+      glowAnim.stopAnimation();
+      Animated.timing(glowAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
       return;
     }
 
-    let isMounted = true;
-    let loop2: Animated.CompositeAnimation | null = null;
-
-    pulseScale1.setValue(1);
-    pulseOpacity1.setValue(0.7);
-    const loop1 = Animated.loop(
-      Animated.parallel([
-        Animated.timing(pulseScale1, {
-          toValue: 2.3,
-          duration: 1400,
-          easing: Easing.out(Easing.ease),
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 1600,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-        Animated.timing(pulseOpacity1, {
+        Animated.timing(glowAnim, {
           toValue: 0,
-          duration: 1400,
+          duration: 1600,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
     );
-    loop1.start();
+    loop.start();
 
-    const timerId = setTimeout(() => {
-      if (!isMounted) return;
-      pulseScale2.setValue(1);
-      pulseOpacity2.setValue(0.5);
-      loop2 = Animated.loop(
-        Animated.parallel([
-          Animated.timing(pulseScale2, {
-            toValue: 2.3,
-            duration: 1400,
-            easing: Easing.out(Easing.ease),
+    return () => {
+      loop.stop();
+      glowAnim.setValue(0);
+    };
+  }, [recordingState, isAwaitingPostAuthAudio]);
+
+  // Waveform bars animation while listening or processing
+  useEffect(() => {
+    const isActive =
+      recordingState === 'listening' 
+      isAwaitingPostAuthAudio;
+
+    if (!isActive) {
+      barAnims.forEach((b) => {
+        b.stopAnimation();
+        Animated.timing(b, { toValue: 0.3, duration: 200, useNativeDriver: true }).start();
+      });
+      return;
+    }
+
+    const offsets = [0, 200, 80, 320, 140];
+    const loops = barAnims.map((anim, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(offsets[i]),
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 500,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
-          Animated.timing(pulseOpacity2, {
-            toValue: 0,
-            duration: 1400,
+          Animated.timing(anim, {
+            toValue: 0.25,
+            duration: 500,
+            easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
           }),
         ])
-      );
-      loop2.start();
-    }, 500);
+      )
+    );
+    loops.forEach((l) => l.start());
 
     return () => {
-      isMounted = false;
-      clearTimeout(timerId);
-      loop1.stop();
-      if (loop2) loop2.stop();
-      pulseScale1.setValue(1);
-      pulseOpacity1.setValue(0);
-      pulseScale2.setValue(1);
-      pulseOpacity2.setValue(0);
+      loops.forEach((l) => l.stop());
+      barAnims.forEach((b) => b.setValue(0.3));
     };
-  }, [recordingState]);
+  }, [recordingState, isAwaitingPostAuthAudio]);
 
   // Spinning icon while processing
   useEffect(() => {
@@ -1001,25 +1177,26 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
             </View>
           )}
 
-          {/* Animated pulse rings (visible during listening) */}
+          {/* Minimal glow ring + mic button */}
           <View style={styles.micRingContainer}>
+            {/* Soft animated glow behind button */}
             <Animated.View
               style={[
-                styles.pulseRing,
+                styles.glowRing,
                 {
                   backgroundColor: micStateColor,
-                  opacity: pulseOpacity1,
-                  transform: [{ scale: pulseScale1 }],
-                },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.pulseRing,
-                {
-                  backgroundColor: micStateColor,
-                  opacity: pulseOpacity2,
-                  transform: [{ scale: pulseScale2 }],
+                  opacity: glowAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.0, 0.22],
+                  }),
+                  transform: [
+                    {
+                      scale: glowAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 1.22],
+                      }),
+                    },
+                  ],
                 },
               ]}
             />
@@ -1045,6 +1222,24 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
               )}
             </TouchableOpacity>
           </View>
+
+          {/* Waveform bars — shown while listening or processing */}
+          {(recordingState === 'listening' || recordingState === 'processing' || isAwaitingPostAuthAudio) && (
+            <View style={styles.waveformRow}>
+              {barAnims.map((anim, i) => (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.waveBar,
+                    {
+                      backgroundColor: micStateColor,
+                      transform: [{ scaleY: anim }],
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+          )}
 
           {/* Live partial transcript removed — no longer shown */}
 
@@ -1090,7 +1285,7 @@ export function VoiceAssistantSheet({ onNavigate }: Props) {
 
 function createStyles(colors: ReturnType<typeof useThemeColors>) {
   const MIC_SIZE = 80;
-  const RING_CONTAINER_SIZE = MIC_SIZE * 2.5; // room for rings to expand
+  const RING_CONTAINER_SIZE = MIC_SIZE * 1.7; // tight container — only glow, no expanding rings
 
   return StyleSheet.create({
     container: {
@@ -1263,9 +1458,8 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       height: RING_CONTAINER_SIZE,
       alignItems: 'center',
       justifyContent: 'center',
-        marginTop: -20,
     },
-    pulseRing: {
+    glowRing: {
       position: 'absolute',
       width: MIC_SIZE,
       height: MIC_SIZE,
@@ -1279,10 +1473,23 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
       justifyContent: 'center',
       // Subtle shadow to lift the button off the background
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
       elevation: 6,
+    },
+    waveformRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      height: 28,
+      marginTop: 6,
+    },
+    waveBar: {
+      width: 4,
+      height: 20,
+      borderRadius: 2,
     },
     micBtnNotReady: {
       opacity: 0.45,
@@ -1297,7 +1504,7 @@ function createStyles(colors: ReturnType<typeof useThemeColors>) {
 
     // ── Bottom Controls ─────────────────────────────────────────────────────
     controls: {
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: spacing.sm,
       paddingVertical: spacing.md,
       backgroundColor: colors.surface,
       borderTopWidth: 1,

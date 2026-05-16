@@ -131,7 +131,7 @@ export function getApiClient(): AxiosInstance {
 
   realClient = axios.create({
     baseURL: getApiBaseUrl(),
-    timeout: 15000,
+    timeout: 30000,
   });
 
   attachRequestInterceptors(realClient);
@@ -144,7 +144,7 @@ export function getMockApiClient(): AxiosInstance {
 
   mockClient = axios.create({
     baseURL: 'https://mock.SpeakGov.local',
-    timeout: 15000,
+    timeout: 30000,
     adapter: mockAdapter,
   });
 
